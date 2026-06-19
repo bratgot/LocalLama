@@ -1,0 +1,12 @@
+{
+  "server_binary": "llama/llama-server.exe",
+  "model_path": "models/model.gguf",
+  "host": "127.0.0.1",
+  "port": 8080,
+  "n_gpu_layers": 99,
+  "ctx_size": 4096,
+  "temperature": 0.6,
+  "num_outputs": 3,
+  "idle_unload_seconds": 0,
+  "extra_args": ["-fa", "on"]
+}

@@ -1,0 +1,35 @@
+# ---- Build output ----------------------------------------------------------
+/build/
+/dist/
+/out/
+*.user
+CMakeUserPresets.json
+
+# ---- Upstream llama.cpp clone (huge; built by scripts/fetch-llama.ps1) ------
+/llama.cpp/
+
+# ---- User-supplied runtime: llama-server + DLLs and the GGUF model ----------
+# Never commit these (large, machine-specific, separate licenses). Keep only
+# the placeholder READMEs so the folders exist.
+runtime/llama/*
+runtime/models/*
+!runtime/llama/README.txt
+!runtime/models/README.txt
+
+# ---- Catch-all safety net for big / binary artifacts -----------------------
+*.gguf
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+*.zip
+*.7z
+
+# ---- Editor / OS junk ------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
