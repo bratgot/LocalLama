@@ -46,6 +46,7 @@ private:
     double  m_temperature = 0.6;
     int     m_numOutputs  = 3;
     int     m_idleUnload  = 0;      // 0 = keep model loaded (fast); >0 = unload after N s idle
+    QString m_defaultMode = "Make it concise";   // dropdown selection on startup
 
     bool    m_busy        = false;
     int     m_running     = 0;      // candidates still generating

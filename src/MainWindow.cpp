@@ -96,6 +96,7 @@ void MainWindow::readConfig()
         m_temperature  = o.value("temperature").toDouble(m_temperature);
         m_numOutputs   = qBound(1, o.value("num_outputs").toInt(m_numOutputs), 6);
         m_idleUnload   = o.value("idle_unload_seconds").toInt(m_idleUnload);
+        m_defaultMode  = o.value("default_mode").toString(m_defaultMode);
         const QJsonArray extra = o.value("extra_args").toArray();
         for (const auto &v : extra) cfg.extraArgs << v.toString();
     }
@@ -122,6 +123,8 @@ void MainWindow::setupUi()
     m_mode = new QComboBox(this);
     for (const auto &m : kModes)
         m_mode->addItem(QString::fromUtf8(m.label), QString::fromUtf8(m.prompt));
+    m_mode->setCurrentText(m_defaultMode);       // default mode from config.json
+                                                 // (no-op if the name doesn't match a mode)
     m_refineBtn = new QPushButton("Refine", this);
     top->addWidget(new QLabel("Mode:", this));
     top->addWidget(m_mode, 1);
