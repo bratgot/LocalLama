@@ -157,15 +157,25 @@ void MainWindow::readConfig()
         if (p.isEmpty()) return p;
         return QFileInfo(p).isAbsolute() ? p : QDir(appDir).filePath(p);
     };
+    // Normalise the server binary name to this platform so one config.json works
+    // on both: ".exe" on Windows, no extension on Linux/macOS.
+    auto platformBinary = [](QString p) -> QString {
+#ifdef Q_OS_WIN
+        if (!p.endsWith(".exe", Qt::CaseInsensitive)) p += ".exe";
+#else
+        if (p.endsWith(".exe", Qt::CaseInsensitive)) p.chop(4);
+#endif
+        return p;
+    };
 
     ServerConfig cfg;
-    cfg.binaryPath = resolve("llama/llama-server.exe");
+    cfg.binaryPath = resolve(platformBinary("llama/llama-server"));
     cfg.modelPath  = resolve("models/model.gguf");
 
     QFile f(appDir + "/config.json");
     if (f.open(QIODevice::ReadOnly)) {
         const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
-        if (o.contains("server_binary")) cfg.binaryPath = resolve(o.value("server_binary").toString());
+        if (o.contains("server_binary")) cfg.binaryPath = resolve(platformBinary(o.value("server_binary").toString()));
         if (o.contains("model_path"))    cfg.modelPath  = resolve(o.value("model_path").toString());
         cfg.host       = o.value("host").toString(cfg.host);
         cfg.port       = o.value("port").toInt(cfg.port);

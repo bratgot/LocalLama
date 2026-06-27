@@ -82,10 +82,48 @@ VRAM (a few seconds to ~30s); the status bar shows **Model loaded. Ready.**
 
 ---
 
+## Building on Linux (CUDA, portable folder)
+
+Linux uses the `scripts/*.sh` twins of the PowerShell scripts. Build host needs
+CMake, GCC, the CUDA toolkit (for a GPU build), and Qt 6 (Widgets + Network) —
+either a downloaded kit (`/opt/Qt/6.x/gcc_64`) or the distro packages
+(`qt6-base-dev` / `qt6-qtbase-devel`).
+
+```bash
+chmod +x scripts/*.sh              # first checkout only
+
+# 1. Build llama.cpp (CUDA, multi-arch incl. sm_89 Ada) and stage it.
+#    Drop 120 from CUDA_ARCHS if your CUDA toolkit is < 12.8.
+./scripts/fetch-llama.sh           # or: ./scripts/fetch-llama.sh --cpu
+# CUDA_ARCHS="75-real;80-real;86-real;89-real;90-real" ./scripts/fetch-llama.sh
+
+# 2. Put a model at runtime/models/model.gguf (download on the connected box).
+
+# 3. Build the app and assemble the portable folder.
+QT_DIR=/opt/Qt/6.7.2/gcc_64 ./scripts/build.sh     # QT_DIR optional if system Qt
+./scripts/package.sh               # -> dist/LlamaChat/
+
+# 4. Run it (the launcher sets LD_LIBRARY_PATH + the Qt plugin path).
+./dist/LlamaChat/run.sh
+```
+
+`package.sh` bundles the Qt + CUDA shared libs (via `ldd`) into `lib/`, copies the
+Qt `platforms/libqxcb.so` plugin, and writes `qt.conf` + `run.sh`. The result is a
+self-contained folder you `tar` and carry to the airgapped box — **always launch
+via `run.sh`**, not the bare binary.
+
+Two things the target still needs (not bundleable): the **NVIDIA driver**
+(`libcuda.so.1`, the analog of Windows' `nvcuda.dll`) and basic X11/xcb system
+libraries (present on any desktop install). For a headless/RDP box you may also
+need `libxcb-cursor0`. The app itself, Qt, CUDA runtime, and llama-server all
+travel inside the folder.
+
 ## config.json
 
 Lives in `assets/` in the repo and is copied next to the exe on build. Paths are
-resolved relative to the exe.
+resolved relative to the exe. A single `config.json` works on both OSes — the app
+normalises `server_binary` (`llama/llama-server.exe`) to the running platform,
+dropping `.exe` on Linux.
 
 | key             | meaning                                                       |
 |-----------------|---------------------------------------------------------------|
