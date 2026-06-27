@@ -1,0 +1,13 @@
+# Keep line endings sane across Windows/Linux regardless of each user's git config.
+* text=auto
+
+# Shell scripts must stay LF or they fail on Linux (bad interpreter ...^M).
+*.sh   text eol=lf
+
+# Windows scripts stay CRLF.
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+
+# Binary assets — never touch line endings.
+*.gguf binary
+*.zip  binary
