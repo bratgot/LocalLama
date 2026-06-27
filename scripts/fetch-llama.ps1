@@ -66,10 +66,17 @@ if (-not $gen) { throw "No Visual Studio C++ toolchain found. Install VS 2019/20
 #                       libcrypto-3-x64__.dll dependency (the missing-DLL error)
 # [string[]] cast is required: a single-element @(...) from if/else unwraps to a
 # scalar string, which would then string-concat under += / mis-splat to cmake.
+# For a redistributable GPU build, compile kernels for a broad range of NVIDIA
+# architectures instead of just this machine's native one. Without this, ggml
+# defaults to the build host's arch (e.g. Blackwell sm_120) and llama-server
+# crashes with "no kernel image available" on any other GPU. Covered:
+#   75 Turing · 80 A100 · 86 Ampere(RTX30) · 89 Ada(RTX40 / RTX Ada) ·
+#   90 Hopper · 120 Blackwell(RTX50)  + 120-virtual PTX as a forward-compat JIT.
+$cudaArch = '75-real;80-real;86-real;89-real;90-real;120-real;120-virtual'
 [string[]]$cudaArgs = if ($Cpu) {
     '-DLLAMA_CURL=OFF','-DLLAMA_OPENSSL=OFF'
 } else {
-    '-DGGML_CUDA=ON','-DLLAMA_CURL=OFF','-DLLAMA_OPENSSL=OFF'
+    '-DGGML_CUDA=ON',"-DCMAKE_CUDA_ARCHITECTURES=$cudaArch",'-DLLAMA_CURL=OFF','-DLLAMA_OPENSSL=OFF'
 }
 $mode = if ($Cpu) { 'CPU-only' } else { 'CUDA/GPU' }
 Write-Host "Building llama.cpp ($mode) with $gen ..." -ForegroundColor Cyan
