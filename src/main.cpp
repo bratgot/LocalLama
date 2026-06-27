@@ -4,7 +4,8 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    app.setApplicationName("Grammar Refine");
+    app.setApplicationName("LlamaChat");
+    app.setApplicationVersion("0.1");
     app.setOrganizationName("Local");
 
     MainWindow w;

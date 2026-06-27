@@ -99,10 +99,10 @@ $env:QT_DIR = "C:\Qt\6.5.3\msvc2019_64"   # adjust to your installed version
 
 # Build the app and assemble the portable folder
 .\scripts\build.bat -Clean
-.\scripts\package.bat       # -> dist\GrammarRefine\
+.\scripts\package.bat       # -> dist\LlamaChat\
 
 # Run
-.\dist\GrammarRefine\GrammarRefine.exe
+.\dist\LlamaChat\LlamaChat.exe
 ```
 
 The scripts auto-detect the newest Visual Studio toolchain via `vswhere` and the
@@ -142,7 +142,7 @@ license at 3B. Phi-3.5-mini is MIT. Llama models are **not** OSI open source.
 
 ## Configuration
 
-Edit `dist\GrammarRefine\config.json` (or `assets\config.json` before building)
+Edit `dist\LlamaChat\config.json` (or `assets\config.json` before building)
 to change behaviour without recompiling:
 
 | Key | Default | Meaning |
@@ -163,7 +163,7 @@ to change behaviour without recompiling:
 
 ## Airgapped deployment
 
-`scripts/package.bat` assembles `dist\GrammarRefine\` as a fully self-contained
+`scripts/package.bat` assembles `dist\LlamaChat\` as a fully self-contained
 portable folder: app exe, Qt DLLs, MSVC runtime, llama-server, CUDA runtime DLLs,
 and the model. Zip it and transfer by approved media. No installer, no internet,
 no admin rights needed on the target.

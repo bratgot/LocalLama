@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(GrammarRefine VERSION 0.1 LANGUAGES CXX)
+project(LlamaChat VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 qt_standard_project_setup()   # handles AUTOMOC/AUTOUIC/AUTORCC (Qt 6.3+)
 
-qt_add_executable(GrammarRefine
+qt_add_executable(LlamaChat
     src/main.cpp
     src/MainWindow.cpp
     src/MainWindow.h
@@ -24,10 +24,10 @@ qt_add_executable(GrammarRefine
     src/LlamaClient.h
 )
 
-target_include_directories(GrammarRefine PRIVATE src)
-target_link_libraries(GrammarRefine PRIVATE Qt6::Widgets Qt6::Network)
+target_include_directories(LlamaChat PRIVATE src)
+target_link_libraries(LlamaChat PRIVATE Qt6::Widgets Qt6::Network)
 
-set_target_properties(GrammarRefine PROPERTIES
+set_target_properties(LlamaChat PROPERTIES
     # No console window on Windows. Comment this out while debugging if you want
     # to see stdout in a terminal.
     WIN32_EXECUTABLE ON
@@ -35,8 +35,8 @@ set_target_properties(GrammarRefine PROPERTIES
 
 # Copy the default config next to the built binary so the portable folder is
 # self-contained.
-add_custom_command(TARGET GrammarRefine POST_BUILD
+add_custom_command(TARGET LlamaChat POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/assets/config.json"
-        "$<TARGET_FILE_DIR:GrammarRefine>/config.json"
+        "$<TARGET_FILE_DIR:LlamaChat>/config.json"
 )

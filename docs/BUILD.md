@@ -64,8 +64,8 @@ This copies the exe + `config.json`, runs `windeployqt` to gather Qt's DLLs, and
 pulls in whatever you staged under `runtime/llama` and `runtime/models`. Result:
 
 ```
-dist/GrammarRefine/
-├─ GrammarRefine.exe
+dist/LlamaChat/
+├─ LlamaChat.exe
 ├─ config.json
 ├─ Qt6*.dll, platforms/, ...   (windeployqt)
 ├─ llama/   llama-server.exe + its DLLs
@@ -76,8 +76,8 @@ The script warns if `llama/*.exe` or `models/*.gguf` are missing.
 
 ### 5. Transfer
 
-Zip `dist/GrammarRefine`, move it to the airgapped machine by your approved
-method, unzip, and run `GrammarRefine.exe`. First launch loads the model into
+Zip `dist/LlamaChat`, move it to the airgapped machine by your approved
+method, unzip, and run `LlamaChat.exe`. First launch loads the model into
 VRAM (a few seconds to ~30s); the status bar shows **Model loaded. Ready.**
 
 ---

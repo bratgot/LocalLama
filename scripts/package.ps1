@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Assemble a self-contained, portable folder (dist\GrammarRefine) you can zip
+    Assemble a self-contained, portable folder (dist\LlamaChat) you can zip
     and move to the airgapped machine.
 
 .DESCRIPTION
@@ -23,12 +23,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $repoRoot 'build'
-$distDir  = Join-Path $repoRoot 'dist\GrammarRefine'
+$distDir  = Join-Path $repoRoot 'dist\LlamaChat'
 
-$exe = Join-Path $buildDir "$Config\GrammarRefine.exe"
-if (-not (Test-Path $exe)) { $exe = Join-Path $buildDir 'GrammarRefine.exe' }
+$exe = Join-Path $buildDir "$Config\LlamaChat.exe"
+if (-not (Test-Path $exe)) { $exe = Join-Path $buildDir 'LlamaChat.exe' }
 if (-not (Test-Path $exe)) {
-    throw "GrammarRefine.exe not found. Run scripts\build.ps1 first."
+    throw "LlamaChat.exe not found. Run scripts\build.ps1 first."
 }
 
 function Find-QtBin {
@@ -43,8 +43,14 @@ function Find-QtBin {
     return $null
 }
 
-# fresh dist
-if (Test-Path $distDir) { Remove-Item $distDir -Recurse -Force }
+# fresh dist -- clear the CONTENTS but keep the top folder. Deleting the folder
+# itself fails if an Explorer window or the Windows search indexer holds a
+# change-notification handle on it (the files inside are not locked), so emptying
+# in place is the robust approach.
+if (Test-Path $distDir) {
+    Get-ChildItem -LiteralPath $distDir -Force -ErrorAction SilentlyContinue |
+        Remove-Item -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path $distDir            | Out-Null
 New-Item -ItemType Directory -Force -Path "$distDir\llama"    | Out-Null
 New-Item -ItemType Directory -Force -Path "$distDir\models"   | Out-Null
@@ -57,7 +63,7 @@ $qtBin = Find-QtBin
 $windeploy = if ($qtBin) { Join-Path $qtBin 'windeployqt.exe' } else { $null }
 if ($windeploy -and (Test-Path $windeploy)) {
     Write-Host "Running windeployqt (lean)..." -ForegroundColor Cyan
-    & $windeploy (Join-Path $distDir 'GrammarRefine.exe') `
+    & $windeploy (Join-Path $distDir 'LlamaChat.exe') `
         --release --no-translations --no-system-d3d-compiler --no-opengl-sw --compiler-runtime
 } else {
     Write-Warning "windeployqt not found - copy the Qt DLLs into $distDir manually."

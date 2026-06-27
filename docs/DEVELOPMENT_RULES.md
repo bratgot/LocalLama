@@ -73,7 +73,7 @@ user). Process or CurrentUser scope is enough.
 - Keep `temperature` low (≈0.2) in `config.json` so corrections don't drift from
   the user's meaning.
 - Paths in `config.json` are resolved relative to the exe, matching the deployed
-  layout (`llama/`, `models/` next to `GrammarRefine.exe`).
+  layout (`llama/`, `models/` next to `LlamaChat.exe`).
 
 ---
 
@@ -128,9 +128,9 @@ cmake --build build --config Release
 **Symptom** — The exe is built fine, but launching it shows a dialog:
 
 ```
-GrammarRefine.exe - Entry Point Not Found
+LlamaChat.exe - Entry Point Not Found
 The procedure entry point _Z26qt_QMetaEnum_debugOperator...QMetaObjectPKc
-could not be located in the dynamic link library ...\GrammarRefine.exe
+could not be located in the dynamic link library ...\LlamaChat.exe
 ```
 
 Exit code `-1073741511` (0xC0000139, STATUS_ENTRYPOINT_NOT_FOUND).
@@ -145,8 +145,8 @@ kit (or blank) at package time.
 **The tell** — MinGW runtime DLLs land in the dist folder only on a MinGW deploy:
 
 ```powershell
-Get-ChildItem .\dist\GrammarRefine\libgcc*.dll, .\dist\GrammarRefine\libstdc++*.dll, `
-              .\dist\GrammarRefine\libwinpthread*.dll -ErrorAction SilentlyContinue
+Get-ChildItem .\dist\LlamaChat\libgcc*.dll, .\dist\LlamaChat\libstdc++*.dll, `
+              .\dist\LlamaChat\libwinpthread*.dll -ErrorAction SilentlyContinue
 ```
 
 If those exist, it's a MinGW deploy. They must NOT be there for this MSVC app.
@@ -182,19 +182,19 @@ it may "work here" yet fail on a clean or airgapped machine.
 **Check**
 
 ```powershell
-Get-ChildItem .\dist\GrammarRefine\vcruntime140*.dll, .\dist\GrammarRefine\msvcp140.dll -ErrorAction SilentlyContinue
+Get-ChildItem .\dist\LlamaChat\vcruntime140*.dll, .\dist\LlamaChat\msvcp140.dll -ErrorAction SilentlyContinue
 ```
 
 **Fix** — Deploy the runtime from a Developer prompt so it travels with the app:
 
 ```powershell
 # in "Developer PowerShell for VS 2022" (or 2019):
-windeployqt .\dist\GrammarRefine\GrammarRefine.exe --compiler-runtime
+windeployqt .\dist\LlamaChat\LlamaChat.exe --compiler-runtime
 ```
 
 Or copy `vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll` into the dist
 folder manually, or install the VC++ x64 Redistributable on the target. Always
-verify the three DLLs are present in `dist\GrammarRefine\` before transferring to
+verify the three DLLs are present in `dist\LlamaChat\` before transferring to
 the airgapped machine.
 
 ---

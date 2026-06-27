@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Configure and build GrammarRefine with CMake, using a toolchain that matches
+    Configure and build LlamaChat with CMake, using a toolchain that matches
     your Qt kit.
 
 .DESCRIPTION
@@ -156,12 +156,12 @@ Write-Host "Building ($Config)..." -ForegroundColor Cyan
 cmake --build $buildDir --config $Config
 if ($LASTEXITCODE -ne 0) { throw "Build failed." }
 
-$exe = Join-Path $buildDir "$Config\GrammarRefine.exe"
-if (-not (Test-Path $exe)) { $exe = Join-Path $buildDir 'GrammarRefine.exe' }
+$exe = Join-Path $buildDir "$Config\LlamaChat.exe"
+if (-not (Test-Path $exe)) { $exe = Join-Path $buildDir 'LlamaChat.exe' }
 
 if (Test-Path $exe) {
     Write-Host "`nBuilt: $exe" -ForegroundColor Green
     Write-Host "Next:  .\scripts\package.ps1   (assembles the portable folder)" -ForegroundColor Green
 } else {
-    Write-Warning "Build reported success but GrammarRefine.exe was not found under $buildDir."
+    Write-Warning "Build reported success but LlamaChat.exe was not found under $buildDir."
 }
