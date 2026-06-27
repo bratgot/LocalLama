@@ -15,18 +15,18 @@ EXE="$BUILD/LlamaChat"
 
 [[ -f "$EXE" ]] || { echo "ERROR: $EXE not found. Run scripts/build.sh first." >&2; exit 1; }
 
-# --- locate the Qt install (for the plugins, which ldd cannot discover) --------
-qt_prefix() {
-    if [[ -n "${QT_DIR:-}" ]]; then echo "$QT_DIR"; return; fi
+# --- locate the Qt plugins dir (which ldd cannot discover). Works for a kit
+#     (QT_DIR/plugins) and a system install (e.g. /usr/lib64/qt6/plugins). -------
+qt_plugins_dir() {
+    if [[ -n "${QT_DIR:-}" && -d "$QT_DIR/plugins" ]]; then echo "$QT_DIR/plugins"; return; fi
     for q in qtpaths6 qtpaths qmake6 qmake; do
         if command -v "$q" >/dev/null 2>&1; then
-            "$q" -query QT_INSTALL_PREFIX 2>/dev/null && return
+            local p; p="$("$q" -query QT_INSTALL_PLUGINS 2>/dev/null || true)"
+            [[ -n "$p" && -d "$p" ]] && { echo "$p"; return; }
         fi
     done
 }
-QTP="$(qt_prefix || true)"
-QT_PLUGINS=""
-[[ -n "$QTP" && -d "$QTP/plugins" ]] && QT_PLUGINS="$QTP/plugins"
+QT_PLUGINS="$(qt_plugins_dir || true)"
 [[ -z "$QT_PLUGINS" ]] && echo "WARN: Qt plugins dir not found; set QT_DIR. The 'platforms/libqxcb.so' plugin is required to launch."
 
 # --- libraries present on essentially every target: do NOT bundle these -------
@@ -57,15 +57,19 @@ bundle_deps() {
         [[ -f "$p" ]] || continue
         local name; name="$(basename "$p")"
         is_excluded "$name" && continue
-        [[ -e "$DIST/lib/$name" ]] && continue
+        [[ -e "$DIST/lib/$name"   ]] && continue   # already bundled
+        [[ -e "$DIST/llama/$name" ]] && continue   # already shipped next to llama-server
         cp -fL "$p" "$DIST/lib/$name"
     done
 }
 
 # --- stage the llama runtime (server + its .so + CUDA libs) --------------------
 if compgen -G "$REPO_ROOT/runtime/llama/*" >/dev/null; then
-    find "$REPO_ROOT/runtime/llama" -maxdepth 1 -type f ! -name 'README.txt' \
-        -exec cp -fv {} "$DIST/llama/" \;
+    # include symlinks (-type l) and preserve them (cp -a): the .so.N soname
+    # symlinks must travel so the dedup check below skips re-copying the big CUDA
+    # libs into lib/, and so the loader resolves sonames at runtime.
+    find "$REPO_ROOT/runtime/llama" -maxdepth 1 \( -type f -o -type l \) ! -name 'README.txt' \
+        -exec cp -afv {} "$DIST/llama/" \;
 fi
 [[ -x "$DIST/llama/llama-server" ]] && chmod +x "$DIST/llama/llama-server"
 
@@ -123,3 +127,4 @@ echo "   Launch with:  $DIST/run.sh"
 [[ "$have_srv" == "NO" ]]  && echo "   WARN: no llama-server -- run scripts/fetch-llama.sh first."
 [[ "$have_gguf" == "NO" ]] && echo "   WARN: no .gguf -- put a model in runtime/models/."
 [[ "$have_qxcb" == "NO" ]] && echo "   WARN: no xcb platform plugin -- the GUI will not start without it."
+exit 0   # never let a false [[ ]] above set a non-zero exit under set -e

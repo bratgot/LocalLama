@@ -50,12 +50,11 @@ SRV="$(find "$BUILD/bin" -maxdepth 1 -name 'llama-server' -type f | head -n1)"
 mkdir -p "$STAGE"
 find "$STAGE" -maxdepth 1 -type f ! -name 'README.txt' -delete
 cp -fv "$SRV" "$STAGE/"
-# ggml/llama/mtmd shared objects (locations vary by version)
-find "$BUILD" -name '*.so' -o -name '*.so.*' 2>/dev/null | while read -r so; do
-    case "$(basename "$so")" in
-        libggml*|libllama*|libmtmd*) cp -fnv "$so" "$STAGE/" ;;
-    esac
-done
+# ggml/llama/mtmd shared objects. cp -a preserves the .so -> .so.N symlinks so a
+# big lib (e.g. the ~591MB multi-arch libggml-cuda.so) is staged ONCE, not once
+# per symlink name. -n avoids re-copying the same file found in multiple subdirs.
+find "$BUILD" \( -name 'libggml*.so*' -o -name 'libllama*.so*' -o -name 'libmtmd*.so*' \) 2>/dev/null \
+    | while read -r so; do cp -a -n "$so" "$STAGE/" 2>/dev/null || true; done
 
 # 4. CUDA runtime libs (GPU build) so it runs without the full toolkit installed.
 #    The DRIVER (libcuda.so.1) is NOT bundleable -- it must be present on the target
@@ -67,8 +66,9 @@ if [[ $CPU -eq 0 ]]; then
         if ls "$d"/libcudart.so.* >/dev/null 2>&1; then cudalib="$d"; break; fi
     done
     if [[ -n "$cudalib" ]]; then
+        # -a preserves the symlink->realfile pair so the big libs aren't duplicated
         for pat in 'libcudart.so.*' 'libcublas.so.*' 'libcublasLt.so.*'; do
-            cp -fv "$cudalib"/$pat "$STAGE/" 2>/dev/null || \
+            cp -av "$cudalib"/$pat "$STAGE/" 2>/dev/null || \
                 echo "WARN: no $pat in $cudalib"
         done
     else
