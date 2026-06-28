@@ -76,7 +76,8 @@ $cudaArch = '75-real;80-real;86-real;89-real;90-real;120-real;120-virtual'
 [string[]]$cudaArgs = if ($Cpu) {
     '-DLLAMA_CURL=OFF','-DLLAMA_OPENSSL=OFF'
 } else {
-    '-DGGML_CUDA=ON',"-DCMAKE_CUDA_ARCHITECTURES=$cudaArch",'-DLLAMA_CURL=OFF','-DLLAMA_OPENSSL=OFF'
+    # GGML_CUDA_NCCL=OFF: skip the multi-GPU NCCL dependency (unused single-GPU app).
+    '-DGGML_CUDA=ON','-DGGML_CUDA_NCCL=OFF',"-DCMAKE_CUDA_ARCHITECTURES=$cudaArch",'-DLLAMA_CURL=OFF','-DLLAMA_OPENSSL=OFF'
 }
 $mode = if ($Cpu) { 'CPU-only' } else { 'CUDA/GPU' }
 Write-Host "Building llama.cpp ($mode) with $gen ..." -ForegroundColor Cyan

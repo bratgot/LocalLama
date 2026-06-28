@@ -35,7 +35,9 @@ fi
 BUILD="$DIR/build"
 args=(-DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF)
 if [[ $CPU -eq 0 ]]; then
-    args+=(-DGGML_CUDA=ON "-DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCHS")
+    # GGML_CUDA_NCCL defaults ON and links libnccl (~245MB) for multi-GPU collectives
+    # this single-GPU app never uses; OFF keeps it out of the bundle.
+    args+=(-DGGML_CUDA=ON -DGGML_CUDA_NCCL=OFF "-DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCHS")
     mode="CUDA/GPU (archs: $CUDA_ARCHS)"
 else
     mode="CPU-only"

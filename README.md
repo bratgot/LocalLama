@@ -161,12 +161,29 @@ to change behaviour without recompiling:
 > If the app hangs on "Loading model…", run `llama-server.exe --help` and check
 > the exact syntax for your build.
 
+## Preferences, history & multi-user / network deployment
+
+Per-user settings (theme, font, selected modes, window size) and conversation
+history are stored in **each user's own profile**, not next to the exe:
+
+- Windows: `%LOCALAPPDATA%\LlamaChat\` — `settings.ini`, `history.json`
+- Linux:   `~/.config/LlamaChat/`
+
+So a single copy of the (large) app + model folder can sit on a **read-only
+network share** and be run by many users at once — each keeps independent prefs
+and history, and nothing is written back to the shared folder. To ship shared
+defaults, drop a `settings.ini` next to the exe: each user is seeded from it on
+first run, then saves their own changes privately. **Reset preferences** in the
+app clears the current user's settings back to defaults.
+
 ## Airgapped deployment
 
-`scripts/package.bat` assembles `dist\LlamaChat\` as a fully self-contained
-portable folder: app exe, Qt DLLs, MSVC runtime, llama-server, CUDA runtime DLLs,
-and the model. Zip it and transfer by approved media. No installer, no internet,
-no admin rights needed on the target.
+`scripts/package.bat` (Windows) or `scripts/package.sh` (Linux) assembles
+`dist\LlamaChat\` as a fully self-contained portable folder: app exe, Qt
+libraries, the C++ runtime, llama-server, CUDA runtime libraries, and the model.
+Zip/tar it and transfer by approved media. No installer, no internet, no admin
+rights needed on the target. See **[docs/BUILD.md](docs/BUILD.md)** for the Linux
+(portable-folder + `run.sh`) flow.
 
 ## License & acknowledgments
 
