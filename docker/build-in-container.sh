@@ -9,8 +9,9 @@
 #     llamachat-build:rocky9 bash /src/docker/build-in-container.sh
 set -euo pipefail
 
-# Ada target needs sm_89; drop 120 (Blackwell) so CUDA 12.6 in the base suffices.
-export CUDA_ARCHS="${CUDA_ARCHS:-75-real;80-real;86-real;89-real;90-real}"
+# Match the Windows build's GPU range: Turing(75)..Blackwell(120) + PTX fallback.
+# sm_120 requires the CUDA 12.9 base image.
+export CUDA_ARCHS="${CUDA_ARCHS:-75-real;80-real;86-real;89-real;90-real;120-real;120-virtual}"
 
 # Refresh source from the read-only mount, but KEEP llama.cpp/build/runtime/dist so
 # re-runs against a persistent /work volume are incremental (no re-clone/recompile).
