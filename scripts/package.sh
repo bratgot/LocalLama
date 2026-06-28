@@ -29,15 +29,17 @@ qt_plugins_dir() {
 QT_PLUGINS="$(qt_plugins_dir || true)"
 [[ -z "$QT_PLUGINS" ]] && echo "WARN: Qt plugins dir not found; set QT_DIR. The 'platforms/libqxcb.so' plugin is required to launch."
 
-# --- libraries present on essentially every target: do NOT bundle these -------
-# (glibc + loader + GPU driver + windowing-system libs expected on the host)
+# --- libraries to NOT bundle: present on any target -----------------------------
+# glibc + loader, the GPU driver (provides libcuda AND libGL/GLX/EGL via libglvnd,
+# which a CUDA-capable target always has), and a few core system libs. The X11 /
+# xcb / xkbcommon CLIENT libs ARE bundled (they fall through to the copy below) so
+# the GUI launches on a minimal/airgapped Rocky 9 with no desktop packages.
 is_excluded() {
     case "$1" in
         ld-linux*|libc.so*|libm.so*|libdl.so*|libpthread.so*|librt.so*|libresolv.so*|\
         libcuda.so*|libnvidia*|\
         libGL.so*|libGLX*|libEGL*|libOpenGL*|libGLdispatch*|\
-        libX11*|libxcb*|libXext*|libXrender*|libXrandr*|libXi*|libXfixes*|libXcursor*|\
-        libxkbcommon*|libwayland*|libdrm*|libgbm*|libdbus*) return 0 ;;
+        libdrm*|libgbm*|libwayland*|libdbus*|libsystemd*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -109,6 +111,9 @@ cat > "$DIST/run.sh" <<'EOF'
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export LD_LIBRARY_PATH="$DIR/lib:$DIR/llama:${LD_LIBRARY_PATH:-}"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$DIR/plugins/platforms"
+# Only the xcb (X11) platform plugin is bundled; force it so the app does not try
+# Wayland (works on X11 and, via XWayland, on Wayland desktops too).
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
 exec "$DIR/LlamaChat" "$@"
 EOF
 chmod +x "$DIST/run.sh" "$DIST/LlamaChat"
