@@ -60,6 +60,7 @@ private:
     void historyStep(int delta);         // Prev/Next through previous generations
     void loadHistory();                  // read history.json
     void saveHistory();                  // write history.json
+    QString configDir() const;           // per-user, writable config dir
     QString settingsPath() const;
     QString historyPath() const;
 

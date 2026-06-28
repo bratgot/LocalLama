@@ -25,6 +25,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QStandardPaths>
 #include <QScreen>
 #include <QCloseEvent>
 #include <QDateTime>
@@ -113,9 +114,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     setupUi();             // builds header, mode checkboxes + cards, history, footer
     wireSignals();
 
-    loadHistory();         // history.json -> m_history
+    // First run for this user: seed prefs from an admin default placed next to the
+    // exe (optional), so a shared deployment can ship sensible defaults while each
+    // user's later changes stay private in their own profile.
+    const QString userIni = settingsPath();
+    const QString seedIni = QCoreApplication::applicationDirPath() + "/settings.ini";
+    if (!QFileInfo::exists(userIni) && QFileInfo::exists(seedIni)
+        && QFileInfo(seedIni).absoluteFilePath() != QFileInfo(userIni).absoluteFilePath())
+        QFile::copy(seedIni, userIni);
+
+    loadHistory();         // per-user history.json -> m_history
     refreshHistoryList();
-    loadPersistedState();  // theme + font + checked modes (settings.ini)
+    loadPersistedState();  // theme + font + checked modes (per-user settings.ini)
     updateModelInfo();     // initial model info panel (config-derived)
 
     if (m_idleUnload == 0) {
@@ -140,14 +150,28 @@ void MainWindow::closeEvent(QCloseEvent *e)
     QMainWindow::closeEvent(e);
 }
 
+QString MainWindow::configDir() const
+{
+    // Per-user, writable location — Windows: %LOCALAPPDATA%\LlamaChat,
+    // Linux: ~/.config/LlamaChat. This lets the app + model live on a read-only
+    // network share while every user keeps private prefs/history. Not derived
+    // from org/app name (avoids a doubled "LlamaChat/LlamaChat" subfolder).
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    if (dir.isEmpty())
+        dir = QDir::homePath();
+    dir += "/LlamaChat";
+    QDir().mkpath(dir);
+    return dir;
+}
+
 QString MainWindow::settingsPath() const
 {
-    return QCoreApplication::applicationDirPath() + "/settings.ini";
+    return configDir() + "/settings.ini";
 }
 
 QString MainWindow::historyPath() const
 {
-    return QCoreApplication::applicationDirPath() + "/history.json";
+    return configDir() + "/history.json";
 }
 
 void MainWindow::readConfig()
@@ -236,8 +260,8 @@ void MainWindow::setupUi()
                        "↻ Regenerate for fresh answers, ◀ / ▶ to step through earlier "
                        "results, and ↶ / ↷ to undo or redo edits to your text. "
                        "Your theme (Light / Dark / Wild), font, selected modes, window "
-                       "size, and history are saved automatically and restored next time "
-                       "you open the app — use Reset preferences to return to defaults. "
+                       "size, and history are saved automatically for your user account and "
+                       "restored next time — use Reset preferences to return to defaults. "
                        "Nothing ever leaves this computer."), this);
     usage->setWordWrap(true);
     usage->setStyleSheet("color:#888;");
