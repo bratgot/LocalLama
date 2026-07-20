@@ -14,6 +14,8 @@ class QListWidget;
 class QFontComboBox;
 class QComboBox;
 class QSpinBox;
+class QTabWidget;
+class QTextEdit;
 class QNetworkAccessManager;
 class ServerManager;
 class LlamaClient;
@@ -45,6 +47,8 @@ private:
 
     // --- new behaviour --------------------------------------------------------
     void startGeneration();              // run current input through the checked modes
+    void editIntent();                   // dialog to set the intent/context prompt
+    void toggleExpand();                 // grow the input box to fill the window
     void resetPreferences();             // restore defaults + re-center window
     void ensureOnScreen();               // pull the window back if it's off-screen
     void applyTheme(const QString &theme);   // "Light", "Dark", or "Wild"
@@ -63,6 +67,23 @@ private:
     QString configDir() const;           // per-user, writable config dir
     QString settingsPath() const;
     QString historyPath() const;
+
+    // --- Chat tab -------------------------------------------------------------
+    void buildChatTab();                 // build the conversational tab
+    void sendChat();                     // send the typed message (or Stop if busy)
+    void doSendChat();                   // actually issue the request (server ready)
+    void newChat();                      // clear the conversation
+    void copyChatReply();                // copy the latest assistant reply
+    void setChatBusy(bool busy);
+    void appendChatSpan(const QString &text, const QColor &color,
+                        bool italic, bool bold);   // styled append to the transcript
+    void renderChatHistory();            // rebuild the transcript from m_chatMessages
+    void onChatReasoning(const QString &text);     // streamed chain-of-thought
+    void onChatChunk(const QString &text);         // streamed answer
+    void onChatFinished();
+    void loadChatHistory();              // read chat.json
+    void saveChatHistory();              // write chat.json
+    QString chatHistoryPath() const;
 
     // One mode = one checkbox + one output card + one client.
     struct ModeUi {
@@ -84,13 +105,30 @@ private:
     QPushButton    *m_nextBtn      = nullptr;   // newer generation
     QPushButton    *m_clearHistBtn = nullptr;
     QPushButton    *m_resetBtn     = nullptr;
+    QPushButton    *m_intentBtn    = nullptr;   // open the intent/context dialog
+    QPushButton    *m_expandBtn    = nullptr;   // expand input to fill the window
     QComboBox      *m_themeCombo   = nullptr;
     QFontComboBox  *m_fontCombo    = nullptr;
     QSpinBox       *m_fontSize     = nullptr;
     QLabel         *m_status       = nullptr;
+    QLabel         *m_usageLabel   = nullptr;   // hidden in expanded mode
     QLabel         *m_modelInfo    = nullptr;   // detailed panel
     QLabel         *m_modelLine    = nullptr;   // persistent one-line status-bar summary
     QListWidget    *m_historyList  = nullptr;
+    QWidget        *m_outputsWrap  = nullptr;   // the output cards row (hidden when expanded)
+    QWidget        *m_rightCol     = nullptr;   // history + model panel (hidden when expanded)
+
+    // Chat tab widgets
+    QTabWidget     *m_tabs         = nullptr;   // Refine / Chat tab container
+    QWidget        *m_refineTab    = nullptr;   // tab 1 host (the proofreader)
+    QWidget        *m_chatTab      = nullptr;   // tab 2 host (the conversation)
+    QTextEdit      *m_chatLog      = nullptr;   // scrolling transcript
+    QPlainTextEdit *m_chatInput    = nullptr;   // message composer
+    QPushButton    *m_chatSendBtn  = nullptr;   // Send / Stop
+    QPushButton    *m_chatNewBtn   = nullptr;   // Clear chat
+    QPushButton    *m_chatCopyBtn  = nullptr;   // Copy latest reply
+    QCheckBox      *m_chatThinkChk = nullptr;   // show/hide the model's thinking
+    LlamaClient    *m_chatClient   = nullptr;
 
     ServerManager         *m_server  = nullptr;
     QNetworkAccessManager *m_infoNet = nullptr;
@@ -114,7 +152,17 @@ private:
     QString m_pendingText;
     QVector<int> m_activeModes;     // mode indices generating in the current run
     int     m_genCounter  = 0;      // bumps each run so seeds (and answers) differ
+    QString m_intent;               // optional user intent/context added to the prompt
+    bool    m_expanded    = false;  // input-fills-window mode
 
     QJsonArray m_history;           // persisted conversation history (newest first)
     QJsonArray m_clearedHistory;    // one-step backup so "Clear history" can be undone
+
+    // Chat tab state
+    QJsonArray m_chatMessages;      // conversation turns (user/assistant), oldest first
+    QString    m_chatAnswer;        // accumulates the current assistant answer
+    bool       m_chatBusy      = false;
+    bool       m_chatPending   = false;   // a message is waiting for the model to load
+    bool       m_chatReasoningShown = false;  // inserted the "thinking" header this turn
+    bool       m_chatAnswerShown    = false;  // inserted the answer separator this turn
 };

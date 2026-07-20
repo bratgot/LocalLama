@@ -14,9 +14,12 @@ type / paste text  ->  Qt app  ->  llama-server (127.0.0.1)  ->  GPU  ->  refine
 
 ## Features
 
-- **Multi-mode, side by side.** Tick any of four modes — Fix grammar & spelling /
-  Improve clarity / Make it formal / Make it concise — and each ticked mode
-  produces its own suggestion column, each with a Copy button.
+- **Two tabs: Refine + Chat.** *Refine* is the side-by-side proofreading view;
+  *Chat* is a full offline conversation with the model (ChatGPT-style, multi-turn,
+  streaming) for free-form rewriting, drafting, or asking how to phrase something.
+- **Multi-mode, side by side.** In Refine, tick any of four modes — Fix grammar &
+  spelling / Improve clarity / Make it formal / Make it concise — and each ticked
+  mode produces its own suggestion column, each with a Copy button.
 - **Regenerate & navigate.** "New answers" reruns with fresh seeds; ◀ / ▶ step
   back through earlier results; ↶ / ↷ undo/redo your input edits.
 - **History panel.** Every run is saved; click any past conversation to reload it.
@@ -41,7 +44,7 @@ type / paste text  ->  Qt app  ->  llama-server (127.0.0.1)  ->  GPU  ->  refine
 | CUDA | 12.9 | 12.9 (via Docker build image) |
 | Qt | 6.5.3 (MSVC) | 6.6 (system / EPEL) |
 | Compiler | MSVC 19.40 (VS 2022) | GCC (Rocky 9) |
-| Model | Qwen2.5-7B-Instruct Q4_K_M (Apache-2.0) | same |
+| Model | Qwen3-8B Q4_K_M (Apache-2.0, thinking) | same |
 
 ## What this repo contains
 
@@ -103,19 +106,28 @@ Toolchain gotchas are in **[docs/DEVELOPMENT_RULES.md](docs/DEVELOPMENT_RULES.md
 
 ## Model
 
-Download any GGUF instruct model and save it as `runtime/models/model.gguf`. A
-good default that fits most NVIDIA GPUs:
+Download any GGUF instruct model and save it as `runtime/models/model.gguf`. The
+default is **Qwen3-8B** — Apache-2.0, same ~5 GB footprint as the old Qwen2.5-7B
+but stronger at following free-form instructions (which powers the Chat tab):
 
 ```powershell
-# Qwen2.5-7B-Instruct Q4_K_M (~4.7 GB, Apache-2.0)
-curl.exe -fL "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf?download=true" `
+# Qwen3-8B Q4_K_M (~5.0 GB, Apache-2.0)
+curl.exe -fL "https://huggingface.co/bartowski/Qwen_Qwen3-8B-GGUF/resolve/main/Qwen_Qwen3-8B-Q4_K_M.gguf?download=true" `
          -o "runtime\models\model.gguf"
 ```
 
-**VRAM guide (Q4_K_M):** ~1.5B ≈ 2 GB, ~7–8B ≈ 6 GB. Always verify the license of
-the exact model **and size** — Qwen2.5 is Apache-2.0 at 1.5B/7B but a
-non-commercial license at 3B; Phi-3.5-mini is MIT; Llama models are **not** OSI
-open source.
+**Thinking (reasoning).** Qwen3 is a hybrid model with chain-of-thought **on by
+default**. The app handles this automatically: the Chat tab shows the model's
+thinking in a separate, collapsible block, while the Refine tab hides it so
+proofreading columns stay clean and fast. Because thinking tokens add latency,
+lighter GPUs may prefer **Qwen3-4B-Instruct-2507** (~2.5 GB, Apache-2.0), which
+never emits thinking. To force no-thinking on any Qwen3 model, add
+`"--chat-template-kwargs", "{\"enable_thinking\":false}"` to `extra_args`.
+
+**VRAM guide (Q4_K_M):** ~4B ≈ 3 GB, ~8B ≈ 6 GB, ~14B ≈ 10 GB. Always verify the
+license of the exact model **and size** — Qwen3 (4B/8B/14B) is Apache-2.0; Phi-4
+is MIT; Gemma 3 uses Google's custom terms; Llama models are **not** OSI open
+source.
 
 ## Configuration
 

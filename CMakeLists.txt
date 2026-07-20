@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(LlamaChat VERSION 0.1 LANGUAGES CXX)
+project(LlamaChat VERSION 0.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,10 +22,18 @@ qt_add_executable(LlamaChat
     src/ServerManager.h
     src/LlamaClient.cpp
     src/LlamaClient.h
+    assets/resources.qrc          # embeds icon.ico for the window/taskbar icon
 )
 
 target_include_directories(LlamaChat PRIVATE src)
 target_link_libraries(LlamaChat PRIVATE Qt6::Widgets Qt6::Network)
+
+# Windows: embed the exe icon (Explorer / pinned taskbar) and link shell32 for
+# SetCurrentProcessExplicitAppUserModelID (makes the app cleanly pinnable).
+if(WIN32)
+    target_sources(LlamaChat PRIVATE assets/app.rc)
+    target_link_libraries(LlamaChat PRIVATE shell32)
+endif()
 
 set_target_properties(LlamaChat PROPERTIES
     # No console window on Windows. Comment this out while debugging if you want
