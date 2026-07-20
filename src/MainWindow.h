@@ -133,6 +133,7 @@ private:
     QPushButton    *m_chatNewBtn   = nullptr;   // Clear chat
     QPushButton    *m_chatCopyBtn  = nullptr;   // Copy latest reply
     QCheckBox      *m_chatThinkChk = nullptr;   // show/hide the model's thinking
+    QVector<QCheckBox*> m_chatTones;            // tone toggles (Warm/Friendly/…)
     LlamaClient    *m_chatClient   = nullptr;
 
     ServerManager         *m_server  = nullptr;

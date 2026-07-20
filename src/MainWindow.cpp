@@ -87,6 +87,19 @@ const Variety kVariety[] = {
 };
 const int kVarietyCount = int(sizeof(kVariety) / sizeof(kVariety[0]));
 
+// Quick tone toggles for the Chat tab. Any checked ones are folded into the
+// chat system prompt as a tone instruction (multi-select — you can combine them).
+struct ChatTone { const char *label; const char *phrase; };
+const ChatTone kChatTones[] = {
+    {"Warm",         "warm and caring"},
+    {"Friendly",     "friendly and approachable"},
+    {"Professional", "professional and polished"},
+    {"Assertive",    "assertive and confident"},
+    {"Urgent",       "direct and urgent, conveying time-sensitivity"},
+    {"No worries",   "relaxed and reassuring, keeping things easy-going"},
+};
+const int kChatToneCount = int(sizeof(kChatTones) / sizeof(kChatTones[0]));
+
 // Dark theme. Light theme is the default Qt look (empty stylesheet).
 const char *kDarkQss = R"(
 QWidget        { background-color: #1e1f22; color: #e6e6e6; }
@@ -617,6 +630,10 @@ void MainWindow::wireSignals()
     connect(m_intentBtn, &QPushButton::clicked, this, &MainWindow::manageIntents);
     connect(m_intentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onIntentComboChanged);
+
+    // remember chat tone toggles across sessions
+    for (auto *cb : m_chatTones)
+        connect(cb, &QCheckBox::toggled, this, [this]() { persistState(); });
     connect(m_expandBtn, &QPushButton::clicked, this, &MainWindow::toggleExpand);
 }
 
@@ -1106,6 +1123,14 @@ void MainWindow::loadPersistedState()
         m_tabs->blockSignals(false);
     }
 
+    // chat tone toggles
+    const QStringList savedTones = s.value("chatTones").toStringList();
+    for (int i = 0; i < m_chatTones.size(); ++i) {
+        m_chatTones[i]->blockSignals(true);
+        m_chatTones[i]->setChecked(savedTones.contains(QString::fromUtf8(kChatTones[i].label)));
+        m_chatTones[i]->blockSignals(false);
+    }
+
     // global context presets + the active context selection
     loadIntentState();
 
@@ -1127,6 +1152,10 @@ void MainWindow::persistState()
         if (m.check->isChecked()) checked << m.label;
     s.setValue("modes", checked);
     if (m_tabs) s.setValue("tab", m_tabs->currentIndex());   // active tab (Refine/Chat)
+    QStringList tones;
+    for (int i = 0; i < m_chatTones.size(); ++i)
+        if (m_chatTones[i]->isChecked()) tones << QString::fromUtf8(kChatTones[i].label);
+    s.setValue("chatTones", tones);
     s.setValue("geometry", saveGeometry());        // window size + position
 }
 
@@ -1170,6 +1199,11 @@ void MainWindow::resetPreferences()
     m_intent.clear();                         // clear active context (keep saved presets)
     refreshIntentCombo();
     saveIntentState();
+    for (auto *cb : m_chatTones) {            // clear chat tone toggles
+        cb->blockSignals(true);
+        cb->setChecked(false);
+        cb->blockSignals(false);
+    }
 
     // window back to a centered default
     showNormal();                        // undo maximize/fullscreen first
@@ -1286,6 +1320,19 @@ void MainWindow::buildChatTab()
     top->addWidget(m_chatThinkChk);
     lay->addLayout(top);
 
+    // tone toggles — checked ones shape the reply's tone (multi-select)
+    auto *toneRow = new QHBoxLayout();
+    toneRow->addWidget(new QLabel(QStringLiteral("Tone:"), this));
+    m_chatTones.clear();
+    for (int i = 0; i < kChatToneCount; ++i) {
+        auto *cb = new QCheckBox(QString::fromUtf8(kChatTones[i].label), this);
+        cb->setToolTip(QStringLiteral("Ask for a %1 tone").arg(QString::fromUtf8(kChatTones[i].phrase)));
+        m_chatTones.append(cb);
+        toneRow->addWidget(cb);
+    }
+    toneRow->addStretch(1);
+    lay->addLayout(toneRow);
+
     // composer: multi-line input + Send (on top, so you type above the replies)
     auto *composer = new QHBoxLayout();
     m_chatInput = new QPlainTextEdit(this);
@@ -1382,6 +1429,14 @@ void MainWindow::doSendChat()
     if (!m_intent.isEmpty())               // honour the global context in chat too
         sys += QStringLiteral("\n\nUser context — keep this in mind throughout the "
                               "conversation: %1").arg(m_intent);
+
+    QStringList tones;                     // tone toggles (Warm / Professional / …)
+    for (int i = 0; i < m_chatTones.size(); ++i)
+        if (m_chatTones[i]->isChecked())
+            tones << QString::fromUtf8(kChatTones[i].phrase);
+    if (!tones.isEmpty())
+        sys += QStringLiteral("\n\nAdopt this tone in your reply: %1.")
+                   .arg(tones.join(QStringLiteral(", ")));
 
     QJsonArray msgs;
     msgs.append(QJsonObject{{"role", "system"}, {"content", sys}});
