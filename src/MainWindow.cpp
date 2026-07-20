@@ -41,6 +41,9 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QInputDialog>
+#include <QDialog>
+#include <QLineEdit>
+#include <QMessageBox>
 #include <QTabWidget>
 #include <QTextEdit>
 #include <QTextCharFormat>
@@ -100,6 +103,13 @@ QPushButton:disabled { color: #777; border-color: #333; }
 QComboBox, QSpinBox  { background-color: #2b2d31; color: #e6e6e6; border: 1px solid #3a3d42;
                        padding: 2px 4px; }
 QListWidget::item:selected { background-color: #3d5a80; color: #ffffff; }
+QTabWidget::pane { border: 1px solid #3a3d42; background-color: #1e1f22; top: -1px; }
+QTabBar          { background-color: #1e1f22; }
+QTabBar::tab     { background-color: #2b2d31; color: #b8b8b8; border: 1px solid #3a3d42;
+                   padding: 5px 14px; margin-right: 2px;
+                   border-top-left-radius: 4px; border-top-right-radius: 4px; }
+QTabBar::tab:selected { background-color: #1e1f22; color: #e6e6e6; border-bottom-color: #1e1f22; }
+QTabBar::tab:hover    { background-color: #45494f; }
 )";
 
 // "Wild" theme — deep purple canvas, hot-pink controls, neon-green accents.
@@ -121,6 +131,14 @@ QComboBox, QSpinBox  { background-color: #3d1457; color: #7CFFB2; border: 1px so
                        padding: 2px 4px; }
 QCheckBox      { color: #7CFFB2; }
 QListWidget::item:selected { background-color: #7CFFB2; color: #2a0a3a; }
+QTabWidget::pane { border: 2px solid #9b5cff; background-color: #2a0a3a; top: -1px; }
+QTabBar          { background-color: #2a0a3a; }
+QTabBar::tab     { background-color: #3d1457; color: #7CFFB2; border: 1px solid #9b5cff;
+                   padding: 5px 14px; margin-right: 2px;
+                   border-top-left-radius: 5px; border-top-right-radius: 5px; }
+QTabBar::tab:selected { background-color: #2a0a3a; color: #ff3fa4; font-weight: bold;
+                        border-bottom-color: #2a0a3a; }
+QTabBar::tab:hover    { background-color: #5a3a6a; }
 )";
 } // namespace
 
@@ -265,6 +283,13 @@ void MainWindow::setupUi()
     QFont tf = title->font(); tf.setPointSize(20); tf.setBold(true); title->setFont(tf);
     titleRow->addWidget(title);
     titleRow->addStretch(1);
+    // Theme is a global, app-wide preference — keep it in the shared header so
+    // it's reachable from both the Refine and Chat tabs.
+    titleRow->addWidget(new QLabel(QStringLiteral("Theme:"), this));
+    m_themeCombo = new QComboBox(this);
+    m_themeCombo->addItems({"Light", "Dark", "Wild"});
+    m_themeCombo->setToolTip("Light, Dark, or Wild (purple/pink/green) — saved between sessions");
+    titleRow->addWidget(m_themeCombo);
 
     auto *subtitle = new QLabel(
         QStringLiteral("Offline writing refinement — everything runs locally on your machine."), this);
@@ -273,8 +298,9 @@ void MainWindow::setupUi()
     m_usageLabel = new QLabel(
         QStringLiteral("Type or paste text below, tick one or more modes, then press "
                        "Generate (Ctrl+Enter). Each ticked mode produces its own suggestion "
-                       "side by side — click “Copy this” under the one you like. Use "
-                       "Intent… to tell it what you mean or the tone you want; press "
+                       "side by side — click “Copy this” under the one you like. Set a "
+                       "Context (above) to apply a standing instruction, tone, or audience "
+                       "to every refinement and chat reply — save presets via Manage…; press "
                        "↻ Regenerate for fresh, progressively more varied answers; ◀ / ▶ "
                        "step through earlier results; ↶ / ↷ undo/redo your edits; and ⛶ "
                        "Expand grows the input to fill the window for long text. "
@@ -294,6 +320,23 @@ void MainWindow::setupUi()
     hr->setFrameShape(QFrame::HLine);
     hr->setFrameShadow(QFrame::Sunken);
     root->addWidget(hr);
+
+    // Global "Context": a reusable instruction/tone/audience applied to BOTH the
+    // Refine modes and Chat replies. Lives above the tabs so it's always visible.
+    // Presets are saved per-user (and seedable for a whole team) via settings.ini.
+    auto *ctxRow = new QHBoxLayout();
+    ctxRow->addWidget(new QLabel(QStringLiteral("Context:"), this));
+    m_intentCombo = new QComboBox(this);
+    m_intentCombo->setToolTip(QStringLiteral(
+        "A reusable instruction/tone/audience applied to every refinement and chat "
+        "reply. Pick a saved preset, or Manage… to create your own."));
+    m_intentCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_intentCombo->setMinimumWidth(240);
+    ctxRow->addWidget(m_intentCombo, 1);
+    m_intentBtn = new QPushButton(QStringLiteral("Manage…"), this);
+    m_intentBtn->setToolTip(QStringLiteral("Create, edit, or delete saved context presets"));
+    ctxRow->addWidget(m_intentBtn);
+    root->addLayout(ctxRow);
 
     // Two tabs: the side-by-side "Refine" proofreader, and a conversational
     // "Chat". Everything below (through the main split) lives in the Refine tab;
@@ -315,14 +358,6 @@ void MainWindow::setupUi()
         modeRow->addWidget(cb);
     }
     modeRow->addStretch(1);
-    m_intentBtn = new QPushButton(QStringLiteral("Intent…"), this);
-    m_intentBtn->setToolTip("Describe what you mean / the tone / the audience — guides every refinement");
-    modeRow->addWidget(m_intentBtn);
-    modeRow->addWidget(new QLabel("Theme:", this));
-    m_themeCombo = new QComboBox(this);
-    m_themeCombo->addItems({"Light", "Dark", "Wild"});
-    m_themeCombo->setToolTip("Light, Dark, or Wild (purple/pink/green) — saved between sessions");
-    modeRow->addWidget(m_themeCombo);
     refineLay->addLayout(modeRow);
 
     // --- row B: font controls + generate / navigation ---------------------
@@ -579,7 +614,9 @@ void MainWindow::wireSignals()
     connect(m_historyList, &QListWidget::currentRowChanged, this, &MainWindow::onHistorySelected);
 
     connect(m_resetBtn,  &QPushButton::clicked, this, &MainWindow::resetPreferences);
-    connect(m_intentBtn, &QPushButton::clicked, this, &MainWindow::editIntent);
+    connect(m_intentBtn, &QPushButton::clicked, this, &MainWindow::manageIntents);
+    connect(m_intentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onIntentComboChanged);
     connect(m_expandBtn, &QPushButton::clicked, this, &MainWindow::toggleExpand);
 }
 
@@ -630,24 +667,160 @@ void MainWindow::startGeneration()
     }
 }
 
-void MainWindow::editIntent()
+void MainWindow::refreshIntentCombo()
 {
-    bool ok = false;
-    const QString text = QInputDialog::getMultiLineText(
-        this, QStringLiteral("Intent / context"),
-        QStringLiteral("Optionally describe what you're trying to say, the intended tone, "
-                       "or the audience. This guides every refinement.\n"
-                       "Leave blank to clear."),
-        m_intent, &ok);
-    if (!ok) return;                          // Cancel — leave intent unchanged
-    m_intent = text.trimmed();
-    const bool set = !m_intent.isEmpty();
-    m_intentBtn->setText(set ? QStringLiteral("Intent ✓") : QStringLiteral("Intent…"));
-    m_intentBtn->setToolTip(set
-        ? QStringLiteral("Intent: %1").arg(m_intent.left(300))
-        : QStringLiteral("Describe what you mean / the tone / the audience — guides every refinement"));
-    m_status->setText(set ? QStringLiteral("Intent set — it will guide the next generation.")
-                          : QStringLiteral("Intent cleared."));
+    if (!m_intentCombo) return;
+    m_intentCombo->blockSignals(true);
+    m_intentCombo->clear();
+    m_intentCombo->addItem(QStringLiteral("(no context)"), QString());   // itemData = text
+    int sel = 0;
+    for (int i = 0; i < m_intentPresets.size(); ++i) {
+        m_intentCombo->addItem(m_intentPresets[i].name, m_intentPresets[i].text);
+        if (!m_intent.isEmpty() && m_intentPresets[i].text == m_intent) sel = i + 1;
+    }
+    // an active context that matches no preset is shown as a transient "(custom)"
+    if (!m_intent.isEmpty() && sel == 0) {
+        m_intentCombo->addItem(QStringLiteral("(custom)"), m_intent);
+        sel = m_intentCombo->count() - 1;
+    }
+    m_intentCombo->setCurrentIndex(sel);
+    m_intentCombo->blockSignals(false);
+}
+
+void MainWindow::onIntentComboChanged(int idx)
+{
+    if (idx < 0) return;
+    m_intent = m_intentCombo->itemData(idx).toString();
+    saveIntentState();
+    m_status->setText(m_intent.isEmpty()
+        ? QStringLiteral("Context cleared — refinements and chat use no extra instruction.")
+        : QStringLiteral("Context: %1 — applied to refinements and chat.").arg(m_intentCombo->currentText()));
+}
+
+void MainWindow::manageIntents()
+{
+    QDialog dlg(this);
+    dlg.setWindowTitle(QStringLiteral("Context presets"));
+    dlg.resize(560, 440);
+    auto *lay = new QVBoxLayout(&dlg);
+
+    auto *hint = new QLabel(QStringLiteral(
+        "Save reusable context (tone, audience, house style, standing instructions) "
+        "and apply it to every refinement and chat reply. Pick a saved preset from "
+        "the Context box after saving, or “Use as context” to apply the text below now."), &dlg);
+    hint->setWordWrap(true);
+    lay->addWidget(hint);
+
+    auto *mid = new QHBoxLayout();
+    auto *list = new QListWidget(&dlg);
+    list->setMaximumWidth(190);
+    mid->addWidget(list);
+
+    auto *right = new QVBoxLayout();
+    right->addWidget(new QLabel(QStringLiteral("Name:"), &dlg));
+    auto *nameEd = new QLineEdit(&dlg);
+    right->addWidget(nameEd);
+    right->addWidget(new QLabel(QStringLiteral("Context text:"), &dlg));
+    auto *textEd = new QPlainTextEdit(&dlg);
+    right->addWidget(textEd, 1);
+    mid->addLayout(right, 1);
+    lay->addLayout(mid, 1);
+
+    auto *btns = new QHBoxLayout();
+    auto *newBtn   = new QPushButton(QStringLiteral("New"), &dlg);
+    auto *saveBtn  = new QPushButton(QStringLiteral("Save preset"), &dlg);
+    auto *delBtn   = new QPushButton(QStringLiteral("Delete"), &dlg);
+    auto *useBtn   = new QPushButton(QStringLiteral("Use as context"), &dlg);
+    auto *closeBtn = new QPushButton(QStringLiteral("Close"), &dlg);
+    btns->addWidget(newBtn); btns->addWidget(saveBtn); btns->addWidget(delBtn);
+    btns->addStretch(1); btns->addWidget(useBtn); btns->addWidget(closeBtn);
+    lay->addLayout(btns);
+
+    QVector<IntentPreset> work = m_intentPresets;   // edit a copy, commit on close
+    auto reloadList = [&](int selRow) {
+        list->blockSignals(true);
+        list->clear();
+        for (const auto &p : work) list->addItem(p.name);
+        if (selRow >= 0 && selRow < list->count()) list->setCurrentRow(selRow);
+        list->blockSignals(false);
+    };
+    reloadList(-1);
+
+    connect(list, &QListWidget::currentRowChanged, &dlg, [&](int row) {
+        if (row < 0 || row >= work.size()) return;
+        nameEd->setText(work[row].name);
+        textEd->setPlainText(work[row].text);
+    });
+    connect(newBtn, &QPushButton::clicked, &dlg, [&]() {
+        list->setCurrentRow(-1); nameEd->clear(); textEd->clear(); nameEd->setFocus();
+    });
+    connect(saveBtn, &QPushButton::clicked, &dlg, [&]() {
+        const QString nm = nameEd->text().trimmed();
+        const QString tx = textEd->toPlainText().trimmed();
+        if (nm.isEmpty()) {
+            QMessageBox::information(&dlg, QStringLiteral("Name needed"),
+                                     QStringLiteral("Give the preset a name first."));
+            return;
+        }
+        int found = -1;
+        for (int i = 0; i < work.size(); ++i)
+            if (work[i].name.compare(nm, Qt::CaseInsensitive) == 0) { found = i; break; }
+        if (found >= 0) work[found].text = tx;
+        else           { work.append({nm, tx}); found = work.size() - 1; }
+        reloadList(found);
+    });
+    connect(delBtn, &QPushButton::clicked, &dlg, [&]() {
+        const int row = list->currentRow();
+        if (row < 0 || row >= work.size()) return;
+        work.remove(row);
+        nameEd->clear(); textEd->clear();
+        reloadList(qMin(row, work.size() - 1));
+    });
+    QString chosen; bool useChosen = false;
+    connect(useBtn, &QPushButton::clicked, &dlg, [&]() {
+        chosen = textEd->toPlainText().trimmed(); useChosen = true; dlg.accept();
+    });
+    connect(closeBtn, &QPushButton::clicked, &dlg, [&]() { dlg.accept(); });
+
+    dlg.exec();
+
+    m_intentPresets = work;                 // commit preset edits
+    if (useChosen) m_intent = chosen;
+    saveIntentState();
+    refreshIntentCombo();
+    if (useChosen)
+        m_status->setText(m_intent.isEmpty() ? QStringLiteral("Context cleared.")
+                                             : QStringLiteral("Context applied."));
+}
+
+void MainWindow::loadIntentState()
+{
+    QSettings s(settingsPath(), QSettings::IniFormat);
+    m_intentPresets.clear();
+    const int n = s.beginReadArray(QStringLiteral("intentPresets"));
+    for (int i = 0; i < n; ++i) {
+        s.setArrayIndex(i);
+        IntentPreset p;
+        p.name = s.value(QStringLiteral("name")).toString();
+        p.text = s.value(QStringLiteral("text")).toString();
+        if (!p.name.isEmpty()) m_intentPresets.append(p);
+    }
+    s.endArray();
+    m_intent = s.value(QStringLiteral("intent/current")).toString();
+    refreshIntentCombo();
+}
+
+void MainWindow::saveIntentState()
+{
+    QSettings s(settingsPath(), QSettings::IniFormat);
+    s.setValue(QStringLiteral("intent/current"), m_intent);
+    s.beginWriteArray(QStringLiteral("intentPresets"));
+    for (int i = 0; i < m_intentPresets.size(); ++i) {
+        s.setArrayIndex(i);
+        s.setValue(QStringLiteral("name"), m_intentPresets[i].name);
+        s.setValue(QStringLiteral("text"), m_intentPresets[i].text);
+    }
+    s.endArray();
 }
 
 void MainWindow::toggleExpand()
@@ -933,6 +1106,9 @@ void MainWindow::loadPersistedState()
         m_tabs->blockSignals(false);
     }
 
+    // global context presets + the active context selection
+    loadIntentState();
+
     // window size + position (restore, then make sure it's actually visible)
     const QByteArray geo = s.value("geometry").toByteArray();
     if (!geo.isEmpty())
@@ -991,6 +1167,9 @@ void MainWindow::resetPreferences()
     }
     updateModeVisibility();
     if (m_tabs) m_tabs->setCurrentIndex(0);   // back to the Refine tab
+    m_intent.clear();                         // clear active context (keep saved presets)
+    refreshIntentCombo();
+    saveIntentState();
 
     // window back to a centered default
     showNormal();                        // undo maximize/fullscreen first
@@ -1199,8 +1378,13 @@ void MainWindow::doSendChat()
         "offline on the user's machine. Answer clearly and concisely, and use "
         "Markdown when it aids readability.");
 
+    QString sys = kSystem;
+    if (!m_intent.isEmpty())               // honour the global context in chat too
+        sys += QStringLiteral("\n\nUser context — keep this in mind throughout the "
+                              "conversation: %1").arg(m_intent);
+
     QJsonArray msgs;
-    msgs.append(QJsonObject{{"role", "system"}, {"content", kSystem}});
+    msgs.append(QJsonObject{{"role", "system"}, {"content", sys}});
     for (const auto &m : m_chatMessages)
         msgs.append(m);
 

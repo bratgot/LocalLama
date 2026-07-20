@@ -47,7 +47,11 @@ private:
 
     // --- new behaviour --------------------------------------------------------
     void startGeneration();              // run current input through the checked modes
-    void editIntent();                   // dialog to set the intent/context prompt
+    void manageIntents();                // create/edit/delete reusable context presets
+    void refreshIntentCombo();           // rebuild the Context combo from presets
+    void onIntentComboChanged(int idx);  // apply the picked preset (or none)
+    void loadIntentState();              // read presets + current context
+    void saveIntentState();              // write presets + current context
     void toggleExpand();                 // grow the input box to fill the window
     void resetPreferences();             // restore defaults + re-center window
     void ensureOnScreen();               // pull the window back if it's off-screen
@@ -105,7 +109,8 @@ private:
     QPushButton    *m_nextBtn      = nullptr;   // newer generation
     QPushButton    *m_clearHistBtn = nullptr;
     QPushButton    *m_resetBtn     = nullptr;
-    QPushButton    *m_intentBtn    = nullptr;   // open the intent/context dialog
+    QPushButton    *m_intentBtn    = nullptr;   // open the context-preset manager
+    QComboBox      *m_intentCombo  = nullptr;   // pick a saved context preset (global)
     QPushButton    *m_expandBtn    = nullptr;   // expand input to fill the window
     QComboBox      *m_themeCombo   = nullptr;
     QFontComboBox  *m_fontCombo    = nullptr;
@@ -152,7 +157,9 @@ private:
     QString m_pendingText;
     QVector<int> m_activeModes;     // mode indices generating in the current run
     int     m_genCounter  = 0;      // bumps each run so seeds (and answers) differ
-    QString m_intent;               // optional user intent/context added to the prompt
+    QString m_intent;               // active global context, applied to Refine + Chat
+    struct IntentPreset { QString name; QString text; };
+    QVector<IntentPreset> m_intentPresets;   // reusable, saved (and team-seedable) presets
     bool    m_expanded    = false;  // input-fills-window mode
 
     QJsonArray m_history;           // persisted conversation history (newest first)
