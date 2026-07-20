@@ -35,6 +35,33 @@ type / paste text  ->  Qt app  ->  llama-server (127.0.0.1)  ->  GPU  ->  refine
 - **Fully offline & airgap-safe.** No telemetry, loopback-only server, single
   portable folder. No installer, no admin rights on the target.
 
+## What's new in v0.2
+
+- **New Chat tab** — a full offline, multi-turn, streaming conversation with the
+  model (alongside the existing Refine proofreader). Input-on-top layout, **Clear
+  chat** / **Copy reply** buttons, and a **Show thinking** toggle for the model's
+  reasoning.
+- **Chat tone toggles** — one-click **Warm / Friendly / Professional / Assertive /
+  Urgent / No worries** (multi-select) that shape each reply.
+- **Global Context presets** — reusable, named instructions (tone, audience, house
+  style) applied to **both** Refine and Chat. Saved per-user and **seedable for a
+  whole team** via a shared `settings.ini`. (Replaces the old Refine-only "Intent"
+  button.)
+- **New default model: Qwen3-8B** (Apache-2.0) — stronger at following
+  instructions than the old Qwen2.5-7B, same ~5 GB footprint. Refine runs it in
+  fast no-think mode; Chat keeps full reasoning, shown separately.
+- **Theme is now global** — moved to the header, reachable from both tabs, and the
+  dark/wild themes now style the tabs (previously they stayed white).
+- **Remembers more** — the active tab and chat tone selections persist between
+  sessions; chat history is saved per-user (`chat.json`), like Refine history.
+- **App icon & taskbar polish**, and the version now shows in the app name.
+
+> **⚠️ Higher VRAM than v0.1.** v0.2 uses more GPU memory: the Chat tab adds a
+> **5th parallel server slot** (KV cache scales as `ctx_size × slots`, up from 4→5
+> slots) and Qwen3-8B is marginally larger than the old Qwen2.5-7B. Measured
+> **~9.4 GB** on a 16 GB card. On cards with **< 10 GB** (e.g. an 8 GB Ada), lower
+> `n_gpu_layers` or `ctx_size` in `config.json`, or switch to **Qwen3-4B** (~3 GB).
+
 ## Tested on
 
 | Component | Windows | Linux |
