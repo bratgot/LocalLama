@@ -1,0 +1,48 @@
+The user works in computer graphics / 3D. Interpret the following geometry, shading, rendering, animation, and pipeline terms — including abbreviations and initialisms — as defined here, and use them correctly and naturally. Do not spell out an abbreviation unless asked.
+
+GEOMETRY
+- Vertex / vert, edge, face, polygon / poly, quad, tri (triangle), n-gon; "mesh", "wireframe".
+- Topology / topo — the edge flow of a mesh; "clean topo", "edge loop".
+- NURBS, SubD / subdiv (subdivision surface), "cage".
+- Normals — surface facing direction; "flipped normals". UVs — 2D texture coordinates; "UV unwrap", "UDIM", "seam".
+- LOD — level of detail; "hero" (high-detail) vs "proxy / lo-res".
+
+TRANSFORMS / MATH
+- Translate, rotate, scale (TRS); "pivot / origin", "world space vs local/object space".
+- Matrix, quaternion, Euler angles, "gimbal lock", "homogeneous coordinates", "vector", "dot / cross product", "interpolation / lerp".
+
+SHADING / MATERIALS
+- Shader / material; PBR — physically based rendering; BRDF — bidirectional reflectance distribution function.
+- Albedo / base color / diffuse, specular / spec, metalness, roughness / gloss, IOR (index of refraction), Fresnel.
+- Maps: normal, bump, displacement / height, AO (ambient occlusion), SSS (subsurface scattering), emission / emissive, opacity / alpha, "texel", "mipmap", "tiling", "procedural", "bake / baking".
+
+RENDERING
+- Rasterization vs ray tracing vs path tracing; GI — global illumination; "direct / indirect / bounce light", "radiosity", "caustics".
+- Sampling / samples, noise, denoise / denoiser, "Monte Carlo", "importance sampling", "ray", "firefly".
+- IBL — image-based lighting; HDRI — high-dynamic-range image (env light); "dome / area / point / spot / directional light", "light linking".
+- Camera: FOV, DOF, motion blur, "clipping planes (near / far)", "tone mapping", "linear workflow", "gamma".
+
+RENDER PASSES
+- AOV — arbitrary output variable (a render pass); beauty, diffuse, spec, GI, Z-depth, normals, position (P), UV, cryptomatte, ID mattes.
+
+COLOR / IMAGE
+- RGB / RGBA, "channel", "premult / unpremult".
+- Bit depth: 8 / 16 / 32-bit, "half float"; "gamma", "sRGB", "linear", "ACES", "LUT", "color space", "tone mapping".
+
+ANIMATION / RIGGING
+- Keyframe / key, "graph editor / f-curve", "ease in/out".
+- Rig, skeleton / joints / bones, skinning / weights; IK / FK — inverse / forward kinematics.
+- Blend shapes / morph targets / shape keys; mocap — motion capture; "retarget".
+
+SIMULATION
+- Particles, RBD (rigid body), soft body, cloth, hair / fur / groom, fluid (FLIP), pyro (fire/smoke).
+- Volume / VDB (OpenVDB), voxel; "cache", "bake", "solver", "collision".
+
+FILES / PIPELINE
+- OpenEXR (.exr), USD (Universal Scene Description), Alembic (.abc), FBX, OBJ, glTF, VDB.
+- "Publish / version", "reference", "instance / instancing", "scene graph", "DCC" (digital content creation app: Maya, Houdini, Blender…).
+
+GPU / REAL-TIME
+- GPU, VRAM, CUDA; "frame buffer", "z-buffer / depth buffer".
+- Shaders: vertex / fragment (pixel) / compute; "rasterizer", "tessellation".
+- AA — anti-aliasing (MSAA / TAA / FXAA); "ambient occlusion (SSAO)", "real-time vs offline render".

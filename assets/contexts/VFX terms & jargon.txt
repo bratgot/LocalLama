@@ -36,10 +36,26 @@ FORMATS / COLOR / DATA
 - UV / displacement / normal map / spec / diffuse / albedo / roughness / SSS (subsurface) / AO (ambient occlusion) / GI (global illumination) — shading and render terms.
 - Cache / bake — precomputed sim or geometry data.
 
+SCREEN DIRECTION & FRAMING
+- SR / SL — Screen Right / Screen Left (from the viewer's point of view, facing the screen).
+- Camera left / camera right (cam L / cam R) — from the CAMERA's point of view, i.e. the opposite of screen left/right.
+- FR / FL — frame right / frame left; "TR / TL / BR / BL" — top-right / top-left / bottom-right / bottom-left of frame; "C" — centre.
+- FG / BG / MG — foreground / background / mid-ground.
+- OTS — over-the-shoulder; "POV" — point of view; "2S" — two-shot; "insert".
+- Shot sizes: ECU (extreme close-up), CU (close-up), MCU (medium close-up), MS (medium shot), MLS (medium long shot), LS / WS (long / wide shot), EWS (extreme wide shot), "establishing".
+- INT / EXT — interior / exterior (scene heading); "O/S" — off-screen; "OOF" — out of focus.
+- Headroom / noseroom / lookroom — the framing space around a subject; "in frame", "out of frame".
+
 CAMERA / ON-SET
-- FPS — frames per second; "frame range", "handles" (extra frames each side), "slate".
+- FPS — frames per second; "frame range", "handles" (extra frames each side), "slate", "TC" (timecode).
 - DOF — depth of field; "mblur / motion blur", "bokeh".
+- MOS — a shot recorded without sound; "sync" — with sound.
+- ND — neutral-density filter; "f-stop / T-stop", "FOV" (field of view), "focal length (mm)".
+- Anamorphic / ana vs spherical; "AR" — aspect ratio; "2K / 4K / 8K", "HD / UHD".
+- OCF — original camera footage; "RAW", "log / Log-C", "Rec.709", "DCI-P3".
+- SFX — special effects, i.e. PRACTICAL / on-set effects (explosions, rain, atmos); distinct from VFX (digital). "PFX" — practical FX.
+- PU / pickup — additional or reshoot footage; "reshoot", "picture lock / locked cut".
 - Ref / reference — "witness cam", "lidar", "HDRI" (lighting sphere), "chrome ball / gray ball", "MacBeth / color chart", "lens grid", "survey/survey data", "tracking markers".
-- Set extension — extending a physical set with CG.
+- Set extension — extending a physical set with CG; "FCG" — full-CG shot.
 
 Software often referenced: Nuke, Maya, Houdini, Blender, ZBrush, Substance, Mari, Katana, RenderMan, Arnold, Redshift, Karma, V-Ray, After Effects (AE), DaVinci Resolve.

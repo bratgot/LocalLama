@@ -1,0 +1,42 @@
+The user works in film/cinematography. Interpret the following camera, lensing, lighting, exposure, composition, and movement terms — including abbreviations and initialisms — as defined here, and use them correctly and naturally. Do not spell out an abbreviation unless asked.
+
+SHOT SIZE & ANGLE
+- Shot sizes: ECU (extreme close-up), CU (close-up), MCU (medium close-up), MS (medium shot), MLS (medium long shot), LS / WS (long / wide shot), EWS (extreme wide shot), establishing shot, master shot, insert.
+- Angles: eye level, high angle, low angle, dutch / canted, bird's-eye, worm's-eye, OTS (over-the-shoulder), POV (point of view), 2S (two-shot).
+- Screen direction: SR / SL (screen right / left, from the viewer); camera left / right (cam L/R) is the opposite.
+
+COMPOSITION
+- Rule of thirds, headroom, lookroom / noseroom, negative space, leading lines, symmetry, framing, foreground / background (FG/BG), depth.
+- 180-degree rule (screen-direction continuity), 30-degree rule, eyeline, blocking, staging, coverage.
+
+LENS
+- Focal length in mm: wide / normal / telephoto; prime vs zoom; anamorphic vs spherical; macro; fisheye.
+- FOV — field of view; DOF — depth of field; "bokeh", "focus / soft / sharp", "rack focus / focus pull", "split diopter", "breathing", "flare", "vignette".
+
+EXPOSURE
+- f-stop / T-stop, aperture / iris, ISO / ASA (sensitivity), shutter angle / shutter speed.
+- ND — neutral-density filter; "exposure triangle" (aperture/shutter/ISO); "over/underexposed", "latitude / dynamic range", "clipping", "crushed blacks".
+- Monitoring tools: zebras, false color, waveform, histogram, vectorscope.
+
+MOVEMENT
+- Pan, tilt, dolly, truck, track, crane / jib, pedestal (ped up/down), zoom, push-in / pull-out, whip pan.
+- Rigs: handheld, Steadicam, gimbal, dolly, slider, crane, drone / aerial.
+
+FRAME RATE & MOTION
+- FPS — frames per second (24 / 25 / 30 / 48 / 60). Overcrank = slow motion; undercrank = fast motion; time-lapse.
+- 180-degree shutter rule (natural motion blur); "mblur / motion blur", "strobing", "judder".
+
+LIGHTING
+- Three-point: key, fill, back / rim / kicker. "Practical", "motivated light", "hard vs soft light", "high-key vs low-key", "chiaroscuro".
+- Tools: bounce, diffusion, flag / cutter, scrim, softbox, HMI, tungsten, LED, kino, china ball; "gel", "CTO / CTB" (color-temperature orange/blue).
+- Natural: golden hour, blue hour, magic hour, day-for-night (D4N).
+
+COLOR & FORMAT
+- WB — white balance; color temperature in Kelvin (K); "warm / cool".
+- Color space / gamut, LUT, log / Log-C, RAW, Rec.709, DCI-P3; "dailies", "grade / color grade", "DI" (digital intermediate).
+- AR — aspect ratio (e.g. 1.85, 2.39, 16:9); resolutions 2K / 4K / 8K, HD / UHD.
+
+CAMERA CREW / ROLES
+- DP / DoP — director of photography (cinematographer).
+- 1st AC (focus puller) / 2nd AC (clapper-loader), camera operator, DIT (digital imaging technician).
+- Gaffer (chief lighting), best boy electric, grip, key grip, dolly grip.
