@@ -45,6 +45,10 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QTabWidget>
+#include <QTextBrowser>
+#include <QTimer>
+#include <QProcess>
+#include <QWhatsThis>
 #include <QTextEdit>
 #include <QTextCharFormat>
 #include <QColor>
@@ -55,6 +59,11 @@ struct Mode { const char *label; const char *prompt; };
 
 // Each becomes a checkbox + its own output column; the prompt is the system message.
 const Mode kModes[] = {
+    {"Rewrite",
+     "You are a skilled editor. Rewrite the user's text so it reads clearly, naturally, "
+     "and correctly — improving flow, word choice, and sentence structure while "
+     "preserving the original meaning and intent. Fix all grammar and spelling. Do not "
+     "add commentary or quotation marks. Output only the rewritten text."},
     {"Fix grammar & spelling",
      "You are a meticulous proofreader. Correct only the spelling, grammar, and "
      "punctuation errors in the user's text. Preserve the original meaning, "
@@ -178,6 +187,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     loadChatHistory();     // per-user chat.json -> m_chatMessages (Chat tab)
     loadPersistedState();  // theme + font + checked modes (per-user settings.ini)
     updateModelInfo();     // initial model info panel (config-derived)
+    startVramMonitor();    // live GPU VRAM in the status bar
 
     if (m_idleUnload == 0) {
         // Resident model: preload now so the first refine is instant.
@@ -296,33 +306,36 @@ void MainWindow::setupUi()
     QFont tf = title->font(); tf.setPointSize(20); tf.setBold(true); title->setFont(tf);
     titleRow->addWidget(title);
     titleRow->addStretch(1);
+    auto *helpBtn = new QPushButton(QStringLiteral("?"), this);
+    helpBtn->setFixedWidth(30);
+    helpBtn->setToolTip(QStringLiteral("Click, then point at anything for help "
+                                       "(or hover controls for tips)"));
+    connect(helpBtn, &QPushButton::clicked, this, &MainWindow::showHelpPopup);
+    titleRow->addWidget(helpBtn);
     // Theme is a global, app-wide preference — keep it in the shared header so
     // it's reachable from both the Refine and Chat tabs.
     titleRow->addWidget(new QLabel(QStringLiteral("Theme:"), this));
     m_themeCombo = new QComboBox(this);
     m_themeCombo->addItems({"Light", "Dark", "Wild"});
     m_themeCombo->setToolTip("Light, Dark, or Wild (purple/pink/green) — saved between sessions");
+    m_themeCombo->setWhatsThis(QStringLiteral(
+        "App-wide theme — Light, Dark, or Wild. Applies to both tabs and is saved "
+        "between sessions."));
     titleRow->addWidget(m_themeCombo);
 
     auto *subtitle = new QLabel(
-        QStringLiteral("Offline writing refinement — everything runs locally on your machine."), this);
+        QStringLiteral("Fully offline, on your machine. <b>Refine</b> polishes text in "
+                       "side-by-side modes. <b>Chat</b> is a back-and-forth AI assistant — "
+                       "ask it to draft, rewrite, translate, summarise, or explain."), this);
+    subtitle->setWordWrap(true);
+    subtitle->setTextFormat(Qt::RichText);
     subtitle->setStyleSheet("color:#888;");
 
     m_usageLabel = new QLabel(
-        QStringLiteral("Type or paste text below, tick one or more modes, then press "
-                       "Generate (Ctrl+Enter). Each ticked mode produces its own suggestion "
-                       "side by side — click “Copy this” under the one you like. Set a "
-                       "Context (above) to apply a standing instruction, tone, or audience "
-                       "to every refinement and chat reply — save presets via Manage…; press "
-                       "↻ Regenerate for fresh, progressively more varied answers; ◀ / ▶ "
-                       "step through earlier results; ↶ / ↷ undo/redo your edits; and ⛶ "
-                       "Expand grows the input to fill the window for long text. "
-                       "Your theme (Light / Dark / Wild), font, selected modes, window "
-                       "size, and history are saved for your user account. "
-                       "Or switch to the Chat tab for a full back-and-forth "
-                       "conversation with the model. "
-                       "Nothing ever leaves this computer."), this);
+        QStringLiteral("New here? See the <b>Help / Tech info</b> tab (or the “?” button) for "
+                       "a quick guide. Nothing ever leaves this computer."), this);
     m_usageLabel->setWordWrap(true);
+    m_usageLabel->setTextFormat(Qt::RichText);
     m_usageLabel->setStyleSheet("color:#888;");
 
     root->addLayout(titleRow);
@@ -345,6 +358,9 @@ void MainWindow::setupUi()
         "reply. Pick a saved preset, or Manage… to create your own."));
     m_intentCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_intentCombo->setMinimumWidth(240);
+    m_intentCombo->setWhatsThis(QStringLiteral(
+        "Context: a standing instruction, tone, or audience applied to <b>every</b> "
+        "refinement and chat reply. Pick a saved preset here, or “(no context)” for none."));
     ctxRow->addWidget(m_intentCombo, 1);
     m_intentBtn = new QPushButton(QStringLiteral("Manage…"), this);
     m_intentBtn->setToolTip(QStringLiteral("Create, edit, or delete saved context presets"));
@@ -367,6 +383,10 @@ void MainWindow::setupUi()
         m_modes[i].label  = QString::fromUtf8(kModes[i].label);
         m_modes[i].prompt = QString::fromUtf8(kModes[i].prompt);
         auto *cb = new QCheckBox(m_modes[i].label, this);
+        cb->setWhatsThis(QStringLiteral(
+            "A Refine mode. Tick any you like — each ticked mode produces its own "
+            "suggestion column. “Rewrite” improves wording and flow; the others fix "
+            "grammar &amp; spelling, improve clarity, or change tone/length."));
         m_modes[i].check = cb;
         modeRow->addWidget(cb);
     }
@@ -424,6 +444,9 @@ void MainWindow::setupUi()
     m_refineBtn->setDefault(true);
     m_refineBtn->setMinimumWidth(120);
     m_refineBtn->setToolTip("Generate suggestions for your text (Ctrl+Enter)");
+    m_refineBtn->setWhatsThis(QStringLiteral(
+        "Generate a suggestion for each ticked mode (Ctrl+Enter). Results appear as "
+        "columns below; copy the one you like. While running, this becomes “Stop”."));
     // accent styling, set directly so it survives both light and dark themes
     m_refineBtn->setStyleSheet(
         "QPushButton { background-color:#2f7d32; color:white; font-weight:bold;"
@@ -490,14 +513,7 @@ void MainWindow::setupUi()
     histLay->addWidget(m_historyList, 1);
     histLay->addWidget(m_clearHistBtn);
     rightLay->addWidget(histBox, 1);
-
-    auto *modelBox = new QGroupBox("Model info", this);
-    auto *modelLay = new QVBoxLayout(modelBox);
-    m_modelInfo = new QLabel(this);
-    m_modelInfo->setWordWrap(true);
-    m_modelInfo->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    modelLay->addWidget(m_modelInfo);
-    rightLay->addWidget(modelBox);
+    // (Model info moved to the Help / Tech info tab.)
 
     mainSplit->addWidget(rightCol);
     mainSplit->setStretchFactor(0, 1);
@@ -508,6 +524,7 @@ void MainWindow::setupUi()
     m_tabs->addTab(m_refineTab, QStringLiteral("Refine"));
     buildChatTab();
     m_tabs->addTab(m_chatTab, QStringLiteral("Chat"));
+    m_tabs->addTab(buildHelpTab(), QStringLiteral("Help / Tech info"));
     root->addWidget(m_tabs, 1);
 
     root->addWidget(m_status);
@@ -528,6 +545,12 @@ void MainWindow::setupUi()
     // persistent one-line model summary in the status bar (always visible)
     m_modelLine = new QLabel(this);
     statusBar()->addWidget(m_modelLine, 1);
+    m_vramLabel = new QLabel(this);              // live GPU VRAM usage, far right
+    m_vramLabel->setToolTip(QStringLiteral("GPU memory in use / total (all processes)"));
+    m_vramLabel->setWhatsThis(QStringLiteral(
+        "Live GPU memory: <b>used / total</b>, across every program on the card "
+        "(not just this app). Updates every few seconds."));
+    statusBar()->addPermanentWidget(m_vramLabel);
 
     // one client per mode
     for (int i = 0; i < kModeCount; ++i) {
@@ -631,9 +654,10 @@ void MainWindow::wireSignals()
     connect(m_intentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onIntentComboChanged);
 
-    // remember chat tone toggles across sessions
+    // remember chat tone toggles + rewrite mode across sessions
     for (auto *cb : m_chatTones)
         connect(cb, &QCheckBox::toggled, this, [this]() { persistState(); });
+    connect(m_chatRewriteChk, &QCheckBox::toggled, this, [this]() { persistState(); });
     connect(m_expandBtn, &QPushButton::clicked, this, &MainWindow::toggleExpand);
 }
 
@@ -1113,6 +1137,17 @@ void MainWindow::loadPersistedState()
         m_modes[0].check->setChecked(true);
         m_modes[0].check->blockSignals(false);
     }
+    // One-time: switch the new "Rewrite" mode on by default, even for existing
+    // users whose saved modes predate it.
+    if (!s.value("rewriteDefaulted", false).toBool()) {
+        for (auto &m : m_modes)
+            if (m.label == QLatin1String("Rewrite")) {
+                m.check->blockSignals(true);
+                m.check->setChecked(true);
+                m.check->blockSignals(false);
+            }
+        s.setValue("rewriteDefaulted", true);
+    }
     updateModeVisibility();
 
     // active tab (Refine / Chat) — restore without re-triggering a save
@@ -1129,6 +1164,11 @@ void MainWindow::loadPersistedState()
         m_chatTones[i]->blockSignals(true);
         m_chatTones[i]->setChecked(savedTones.contains(QString::fromUtf8(kChatTones[i].label)));
         m_chatTones[i]->blockSignals(false);
+    }
+    if (m_chatRewriteChk) {
+        m_chatRewriteChk->blockSignals(true);
+        m_chatRewriteChk->setChecked(s.value("chatRewrite", false).toBool());
+        m_chatRewriteChk->blockSignals(false);
     }
 
     // global context presets + the active context selection
@@ -1156,6 +1196,7 @@ void MainWindow::persistState()
     for (int i = 0; i < m_chatTones.size(); ++i)
         if (m_chatTones[i]->isChecked()) tones << QString::fromUtf8(kChatTones[i].label);
     s.setValue("chatTones", tones);
+    if (m_chatRewriteChk) s.setValue("chatRewrite", m_chatRewriteChk->isChecked());
     s.setValue("geometry", saveGeometry());        // window size + position
 }
 
@@ -1203,6 +1244,11 @@ void MainWindow::resetPreferences()
         cb->blockSignals(true);
         cb->setChecked(false);
         cb->blockSignals(false);
+    }
+    if (m_chatRewriteChk) {
+        m_chatRewriteChk->blockSignals(true);
+        m_chatRewriteChk->setChecked(false);
+        m_chatRewriteChk->blockSignals(false);
     }
 
     // window back to a centered default
@@ -1314,6 +1360,13 @@ void MainWindow::buildChatTab()
     m_chatCopyBtn->setToolTip(QStringLiteral("Copy the latest assistant reply to the clipboard"));
     top->addWidget(m_chatCopyBtn);
     top->addStretch(1);
+    m_chatRewriteChk = new QCheckBox(QStringLiteral("Rewrite"), this);
+    m_chatRewriteChk->setToolTip(
+        QStringLiteral("Rewrite my message (improve wording) instead of answering it"));
+    m_chatRewriteChk->setWhatsThis(QStringLiteral(
+        "When on, the model rewrites your submitted message (clearer wording, better "
+        "flow) and returns only the rewrite — instead of answering it as a question."));
+    top->addWidget(m_chatRewriteChk);
     m_chatThinkChk = new QCheckBox(QStringLiteral("Show thinking"), this);
     m_chatThinkChk->setChecked(true);
     m_chatThinkChk->setToolTip(QStringLiteral("Show the model's reasoning above each answer"));
@@ -1327,6 +1380,9 @@ void MainWindow::buildChatTab()
     for (int i = 0; i < kChatToneCount; ++i) {
         auto *cb = new QCheckBox(QString::fromUtf8(kChatTones[i].label), this);
         cb->setToolTip(QStringLiteral("Ask for a %1 tone").arg(QString::fromUtf8(kChatTones[i].phrase)));
+        cb->setWhatsThis(QStringLiteral(
+            "Tone toggles — checked ones shape the reply's tone. Multi-select: combine "
+            "them (e.g. Warm + Professional) as you like."));
         m_chatTones.append(cb);
         toneRow->addWidget(cb);
     }
@@ -1339,9 +1395,12 @@ void MainWindow::buildChatTab()
     m_chatInput->setPlaceholderText(QStringLiteral("Type a message, then press Send (Ctrl+Enter)."));
     m_chatInput->setMaximumHeight(90);
     composer->addWidget(m_chatInput, 1);
-    m_chatSendBtn = new QPushButton(QStringLiteral("Send"), this);
+    m_chatSendBtn = new QPushButton(QStringLiteral("Submit"), this);
     m_chatSendBtn->setMinimumWidth(90);
-    m_chatSendBtn->setToolTip(QStringLiteral("Send your message (Ctrl+Enter)"));
+    m_chatSendBtn->setToolTip(QStringLiteral("Send your message to the model (Ctrl+Enter)"));
+    m_chatSendBtn->setWhatsThis(QStringLiteral(
+        "Send your message to the model (Ctrl+Enter). The reply streams into the "
+        "transcript below. While generating, this becomes “Stop”."));
     m_chatSendBtn->setStyleSheet(         // same green accent as Generate, survives all themes
         "QPushButton { background-color:#2f7d32; color:white; font-weight:bold;"
         " border:none; padding:6px 16px; border-radius:4px; }"
@@ -1350,12 +1409,42 @@ void MainWindow::buildChatTab()
     composer->addWidget(m_chatSendBtn);
     lay->addLayout(composer);
 
-    // scrolling transcript below the composer
+    // transcript + conversation-history panel, side by side (like Refine)
+    auto *chatSplit = new QSplitter(Qt::Horizontal, this);
     m_chatLog = new QTextEdit(this);
     m_chatLog->setReadOnly(true);
     m_chatLog->setPlaceholderText(
         QStringLiteral("Ask anything — the whole conversation stays on this machine."));
-    lay->addWidget(m_chatLog, 1);
+    chatSplit->addWidget(m_chatLog);
+
+    auto *histBox = new QGroupBox(QStringLiteral("Chat history"), this);
+    auto *histLay = new QVBoxLayout(histBox);
+    m_chatHistoryList = new QListWidget(this);
+    m_chatHistoryList->setToolTip(QStringLiteral("Past conversations — click one to reload it"));
+    m_chatHistoryList->setWhatsThis(QStringLiteral(
+        "Your saved conversations (newest first). Click one to reload and continue it. "
+        "“Clear chat” starts a new one without losing this list."));
+    m_chatClearHistBtn = new QPushButton(QStringLiteral("Clear history"), this);
+    histLay->addWidget(m_chatHistoryList, 1);
+    histLay->addWidget(m_chatClearHistBtn);
+    chatSplit->addWidget(histBox);
+    chatSplit->setStretchFactor(0, 1);
+    chatSplit->setSizes({820, 240});
+    lay->addWidget(chatSplit, 1);
+
+    connect(m_chatHistoryList, &QListWidget::currentRowChanged,
+            this, &MainWindow::onChatHistorySelected);
+    connect(m_chatClearHistBtn, &QPushButton::clicked, this, [this]() {
+        if (m_chatHistory.isEmpty()) return;
+        if (QMessageBox::question(this, QStringLiteral("Clear chat history"),
+                QStringLiteral("Delete all saved conversations? This can't be undone."))
+            != QMessageBox::Yes) return;
+        m_chatHistory = QJsonArray();
+        m_chatActiveRow = -1;
+        refreshChatHistoryList();
+        saveChatHistory();
+        m_status->setText(QStringLiteral("Chat history cleared."));
+    });
 
     connect(m_chatSendBtn, &QPushButton::clicked, this, &MainWindow::sendChat);
     connect(m_chatNewBtn,  &QPushButton::clicked, this, &MainWindow::newChat);
@@ -1392,7 +1481,9 @@ void MainWindow::sendChat()
         m_status->setText(QStringLiteral("Type a message to send."));
         return;
     }
-    m_chatInput->clear();
+    // keep the message in the composer after sending (it doesn't disappear);
+    // select it so the next keystroke replaces it if you want a fresh one.
+    m_chatInput->selectAll();
 
     // render the user's turn, then open the assistant's
     if (!m_chatLog->document()->isEmpty())
@@ -1437,6 +1528,13 @@ void MainWindow::doSendChat()
     if (!tones.isEmpty())
         sys += QStringLiteral("\n\nAdopt this tone in your reply: %1.")
                    .arg(tones.join(QStringLiteral(", ")));
+
+    if (m_chatRewriteChk && m_chatRewriteChk->isChecked())
+        sys += QStringLiteral("\n\nThe user wants their latest message rewritten, not a "
+                              "conversation. Rewrite it so it reads clearly and naturally — "
+                              "improve flow, word choice, and structure while preserving the "
+                              "meaning. Fix grammar and spelling. Output only the rewritten "
+                              "text, with no commentary.");
 
     QJsonArray msgs;
     msgs.append(QJsonObject{{"role", "system"}, {"content", sys}});
@@ -1483,6 +1581,7 @@ void MainWindow::onChatFinished()
     while (m_chatMessages.size() > 200)            // cap stored turns
         m_chatMessages.removeAt(0);
 
+    recordChatSession();                           // save/refresh this conversation in history
     saveChatHistory();
     setChatBusy(false);
     m_server->notifyActivity();
@@ -1493,9 +1592,10 @@ void MainWindow::onChatFinished()
 void MainWindow::setChatBusy(bool busy)
 {
     m_chatBusy = busy;
-    m_chatSendBtn->setText(busy ? QStringLiteral("Stop") : QStringLiteral("Send"));
+    m_chatSendBtn->setText(busy ? QStringLiteral("Stop") : QStringLiteral("Submit"));
     m_chatInput->setReadOnly(busy);
     m_chatNewBtn->setEnabled(!busy);
+    if (m_chatHistoryList) m_chatHistoryList->setEnabled(!busy);
 }
 
 void MainWindow::newChat()
@@ -1503,10 +1603,69 @@ void MainWindow::newChat()
     if (m_chatBusy)
         m_chatClient->cancel();
     m_chatMessages = QJsonArray();
+    m_chatActiveRow = -1;                          // detach from any saved conversation
     m_chatAnswer.clear();
     m_chatLog->clear();
+    if (m_chatHistoryList) {                        // no row highlighted for a fresh chat
+        m_chatHistoryList->blockSignals(true);
+        m_chatHistoryList->setCurrentRow(-1);
+        m_chatHistoryList->blockSignals(false);
+    }
     saveChatHistory();
-    m_status->setText(QStringLiteral("Chat cleared."));
+    m_status->setText(QStringLiteral("Started a new chat — the previous one is saved in history."));
+}
+
+void MainWindow::recordChatSession()
+{
+    if (m_chatMessages.isEmpty()) return;
+    QJsonObject sess;
+    sess["time"]     = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm");
+    sess["messages"] = m_chatMessages;
+    // move the active conversation to the top (newest first); create it if new
+    if (m_chatActiveRow >= 0 && m_chatActiveRow < m_chatHistory.size())
+        m_chatHistory.removeAt(m_chatActiveRow);
+    m_chatHistory.insert(0, sess);
+    m_chatActiveRow = 0;
+    while (m_chatHistory.size() > 100)             // cap stored conversations
+        m_chatHistory.removeAt(m_chatHistory.size() - 1);
+    refreshChatHistoryList();
+}
+
+void MainWindow::refreshChatHistoryList()
+{
+    if (!m_chatHistoryList) return;
+    m_chatHistoryList->blockSignals(true);
+    m_chatHistoryList->clear();
+    for (const auto &v : m_chatHistory) {
+        const QJsonObject s = v.toObject();
+        QString snip;
+        for (const auto &mv : s.value("messages").toArray()) {   // first user line
+            const QJsonObject m = mv.toObject();
+            if (m.value("role").toString() == QLatin1String("user")) {
+                snip = m.value("content").toString().simplified();
+                break;
+            }
+        }
+        if (snip.size() > 40) snip = snip.left(40) + QStringLiteral("…");
+        m_chatHistoryList->addItem(QStringLiteral("%1  —  %2")
+                                       .arg(s.value("time").toString(), snip));
+    }
+    if (m_chatActiveRow >= 0 && m_chatActiveRow < m_chatHistoryList->count())
+        m_chatHistoryList->setCurrentRow(m_chatActiveRow);
+    m_chatHistoryList->blockSignals(false);
+}
+
+void MainWindow::onChatHistorySelected(int row)
+{
+    if (row < 0 || row >= m_chatHistory.size()) return;
+    if (m_chatBusy) m_chatClient->cancel();
+    const QJsonObject s = m_chatHistory.at(row).toObject();
+    m_chatMessages  = s.value("messages").toArray();
+    m_chatActiveRow = row;
+    m_chatAnswer.clear();
+    renderChatHistory();
+    saveChatHistory();
+    m_status->setText(QStringLiteral("Loaded a chat from %1.").arg(s.value("time").toString()));
 }
 
 void MainWindow::copyChatReply()
@@ -1556,20 +1715,153 @@ void MainWindow::loadChatHistory()
     QFile f(chatHistoryPath());
     if (f.open(QIODevice::ReadOnly)) {
         const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-        if (doc.isArray())
+        if (doc.isObject()) {                       // current format: current + history
+            const QJsonObject o = doc.object();
+            m_chatMessages  = o.value("current").toArray();
+            m_chatHistory   = o.value("history").toArray();
+            m_chatActiveRow = o.value("activeRow").toInt(-1);
+        } else if (doc.isArray()) {                 // legacy: a bare current conversation
             m_chatMessages = doc.array();
+        }
     }
+    if (m_chatActiveRow >= m_chatHistory.size()) m_chatActiveRow = -1;
     renderChatHistory();
+    refreshChatHistoryList();
 }
 
 void MainWindow::saveChatHistory()
 {
+    QJsonObject o;
+    o["current"]   = m_chatMessages;
+    o["history"]   = m_chatHistory;
+    o["activeRow"] = m_chatActiveRow;
     QFile f(chatHistoryPath());
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return;
-    f.write(QJsonDocument(m_chatMessages).toJson(QJsonDocument::Compact));
+    f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
 }
 
 QString MainWindow::chatHistoryPath() const
 {
     return configDir() + "/chat.json";
+}
+
+// ====================== Help / Tech info tab =============================
+
+QWidget *MainWindow::buildHelpTab()
+{
+    auto *tab = new QWidget(this);
+    auto *lay = new QHBoxLayout(tab);
+
+    auto *help = new QTextBrowser(this);
+    help->setOpenExternalLinks(false);
+    help->setHtml(QStringLiteral(
+        "<h2>LlamaChat — quick guide</h2>"
+        "<p>Two tools, both <b>fully offline</b>. Nothing you type ever leaves this computer.</p>"
+
+        "<h3>Refine tab — polish existing text</h3>"
+        "<p>Paste text, tick one or more <b>modes</b>, then press <b>Generate</b> "
+        "(Ctrl+Enter). Each ticked mode produces its own suggestion column with a "
+        "<i>Copy this</i> button.</p>"
+        "<ul>"
+        "<li><b>Rewrite</b> — improve flow, wording and structure (on by default)</li>"
+        "<li><b>Fix grammar &amp; spelling</b> — corrections only, meaning untouched</li>"
+        "<li><b>Improve clarity</b> · <b>Make it formal</b> · <b>Make it concise</b></li>"
+        "</ul>"
+        "<p><b>Regenerate</b> gives fresh, progressively more varied answers; "
+        "<b>&#9664; / &#9654;</b> step through earlier results; <b>&#8624; / &#8625;</b> "
+        "undo/redo your edits; <b>&#9187; Expand</b> grows the input for long text.</p>"
+
+        "<h3>Chat tab — a back-and-forth assistant</h3>"
+        "<p>A full conversation with the local model — like ChatGPT, but offline. Type a "
+        "message and press <b>Submit</b> (Ctrl+Enter); the reply streams in below. It "
+        "remembers the conversation, and past chats are kept in the <b>Chat history</b> "
+        "list (click one to reload and continue it). Tick <b>Tone</b> boxes to shape the "
+        "reply, and use <b>Show thinking</b> to see or hide the model's reasoning.</p>"
+        "<p><b>Examples of what to ask Chat:</b></p>"
+        "<ul>"
+        "<li>&ldquo;Rewrite this email to sound more confident: &hellip;&rdquo;</li>"
+        "<li>&ldquo;Translate the following into French: &hellip;&rdquo;</li>"
+        "<li>&ldquo;Summarise these notes into three bullet points: &hellip;&rdquo;</li>"
+        "<li>&ldquo;Draft a polite reply declining this meeting: &hellip;&rdquo;</li>"
+        "<li>&ldquo;Explain this paragraph in simpler terms: &hellip;&rdquo;</li>"
+        "<li>&ldquo;Suggest three subject lines for this announcement: &hellip;&rdquo;</li>"
+        "</ul>"
+
+        "<h3>Context — applies to both tabs</h3>"
+        "<p>Set a <b>Context</b> at the top: a standing instruction, tone, or audience "
+        "applied to every refinement and chat reply. Save reusable <b>presets</b> via "
+        "<i>Manage&hellip;</i> (e.g. &ldquo;Formal client email&rdquo;, &ldquo;Support "
+        "reply&rdquo;) &mdash; handy for standardised, work-style wording.</p>"
+
+        "<h3>Good to know</h3>"
+        "<ul>"
+        "<li>Your theme, font, modes, tones, context presets and history are saved per "
+        "Windows user &mdash; private to you, even on a shared machine.</li>"
+        "<li>The model runs on your GPU; live memory use is shown bottom-right.</li>"
+        "<li>No telemetry, no network &mdash; a loopback-only local server.</li>"
+        "</ul>"));
+    lay->addWidget(help, 1);
+
+    // Model / tech info panel (moved here from the Refine tab)
+    auto *techBox = new QGroupBox(QStringLiteral("Model / tech info"), this);
+    techBox->setMaximumWidth(340);
+    auto *techLay = new QVBoxLayout(techBox);
+    m_modelInfo = new QLabel(this);
+    m_modelInfo->setWordWrap(true);
+    m_modelInfo->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_modelInfo->setAlignment(Qt::AlignTop);
+    techLay->addWidget(m_modelInfo);
+    techLay->addStretch(1);
+    lay->addWidget(techBox);
+
+    return tab;
+}
+
+void MainWindow::showHelpPopup()
+{
+    // Enter Qt's "What's This?" mode: the cursor becomes a "?", and clicking any
+    // control pops a help bubble right there under the cursor. Hovering controls
+    // also shows their tooltips. Full guide lives on the Help / Tech info tab.
+    QWhatsThis::enterWhatsThisMode();
+}
+
+// ========================= GPU VRAM monitor ==============================
+
+void MainWindow::startVramMonitor()
+{
+    m_vramProc = new QProcess(this);
+    connect(m_vramProc, &QProcess::finished, this, [this](int, QProcess::ExitStatus) {
+        const QString out = QString::fromUtf8(m_vramProc->readAllStandardOutput());
+        const QString line = out.split('\n', Qt::SkipEmptyParts).value(0).trimmed();
+        const QStringList parts = line.split(',');
+        if (parts.size() >= 2) {
+            bool a = false, b = false;
+            const double used  = parts[0].trimmed().toDouble(&a);
+            const double total = parts[1].trimmed().toDouble(&b);
+            if (a && b && total > 0.0) {
+                m_vramLabel->setText(QStringLiteral("VRAM: %1 / %2 GB")
+                    .arg(used / 1024.0, 0, 'f', 1).arg(total / 1024.0, 0, 'f', 1));
+                return;
+            }
+        }
+        m_vramLabel->clear();
+    });
+    connect(m_vramProc, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        m_vramLabel->clear();                  // no nvidia-smi / no NVIDIA GPU present
+        if (m_vramTimer) m_vramTimer->stop();
+    });
+
+    m_vramTimer = new QTimer(this);
+    m_vramTimer->setInterval(3000);
+    connect(m_vramTimer, &QTimer::timeout, this, &MainWindow::pollVram);
+    m_vramTimer->start();
+    pollVram();                                // first sample immediately
+}
+
+void MainWindow::pollVram()
+{
+    if (!m_vramProc || m_vramProc->state() != QProcess::NotRunning) return;
+    m_vramProc->start(QStringLiteral("nvidia-smi"),
+        {QStringLiteral("--query-gpu=memory.used,memory.total"),
+         QStringLiteral("--format=csv,noheader,nounits")});
 }

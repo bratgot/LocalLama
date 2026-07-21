@@ -16,6 +16,8 @@ class QComboBox;
 class QSpinBox;
 class QTabWidget;
 class QTextEdit;
+class QTimer;
+class QProcess;
 class QNetworkAccessManager;
 class ServerManager;
 class LlamaClient;
@@ -61,6 +63,10 @@ private:
     void loadPersistedState();           // restore dark mode + font + checked modes
     void persistState();                 // save dark mode + font + checked modes
     void updateModelInfo();              // refresh the model info panel text
+    QWidget *buildHelpTab();             // the Help / Tech info tab (help + model info)
+    void showHelpPopup();                // quick-help popup dialog
+    void startVramMonitor();             // begin polling GPU VRAM usage
+    void pollVram();                     // query nvidia-smi and update the VRAM label
     void fetchServerProps();             // GET /props to confirm the loaded model
     void recordHistory();                // push the just-finished run into history
     void refreshHistoryList();           // rebuild the side list from m_history
@@ -76,8 +82,11 @@ private:
     void buildChatTab();                 // build the conversational tab
     void sendChat();                     // send the typed message (or Stop if busy)
     void doSendChat();                   // actually issue the request (server ready)
-    void newChat();                      // clear the conversation
+    void newChat();                      // start a fresh conversation
     void copyChatReply();                // copy the latest assistant reply
+    void recordChatSession();            // upsert the current conversation into history
+    void refreshChatHistoryList();       // rebuild the chat-history side list
+    void onChatHistorySelected(int row); // reload a past conversation
     void setChatBusy(bool busy);
     void appendChatSpan(const QString &text, const QColor &color,
                         bool italic, bool bold);   // styled append to the transcript
@@ -117,8 +126,11 @@ private:
     QSpinBox       *m_fontSize     = nullptr;
     QLabel         *m_status       = nullptr;
     QLabel         *m_usageLabel   = nullptr;   // hidden in expanded mode
-    QLabel         *m_modelInfo    = nullptr;   // detailed panel
+    QLabel         *m_modelInfo    = nullptr;   // detailed panel (now on the Help / Tech info tab)
     QLabel         *m_modelLine    = nullptr;   // persistent one-line status-bar summary
+    QLabel         *m_vramLabel    = nullptr;   // live GPU VRAM usage (status bar, right)
+    QTimer         *m_vramTimer    = nullptr;
+    QProcess       *m_vramProc     = nullptr;
     QListWidget    *m_historyList  = nullptr;
     QWidget        *m_outputsWrap  = nullptr;   // the output cards row (hidden when expanded)
     QWidget        *m_rightCol     = nullptr;   // history + model panel (hidden when expanded)
@@ -133,7 +145,10 @@ private:
     QPushButton    *m_chatNewBtn   = nullptr;   // Clear chat
     QPushButton    *m_chatCopyBtn  = nullptr;   // Copy latest reply
     QCheckBox      *m_chatThinkChk = nullptr;   // show/hide the model's thinking
+    QCheckBox      *m_chatRewriteChk = nullptr; // rewrite my message instead of answering it
     QVector<QCheckBox*> m_chatTones;            // tone toggles (Warm/Friendly/…)
+    QListWidget    *m_chatHistoryList  = nullptr;  // past conversations
+    QPushButton    *m_chatClearHistBtn = nullptr;
     LlamaClient    *m_chatClient   = nullptr;
 
     ServerManager         *m_server  = nullptr;
@@ -143,7 +158,7 @@ private:
     double  m_temperature = 0.6;
     int     m_numOutputs  = 3;
     int     m_idleUnload  = 0;      // 0 = keep model loaded (fast); >0 = unload after N s idle
-    QString m_defaultMode = "Make it concise";   // first-run default checkbox
+    QString m_defaultMode = "Rewrite";   // first-run default checkbox
 
     // model info panel
     QString m_modelName;            // model file name from config
@@ -173,4 +188,6 @@ private:
     bool       m_chatPending   = false;   // a message is waiting for the model to load
     bool       m_chatReasoningShown = false;  // inserted the "thinking" header this turn
     bool       m_chatAnswerShown    = false;  // inserted the answer separator this turn
+    QJsonArray m_chatHistory;       // saved past conversations (newest first)
+    int        m_chatActiveRow = -1;// row in m_chatHistory the current chat maps to (-1 = new)
 };

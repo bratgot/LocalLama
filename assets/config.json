@@ -7,7 +7,7 @@
   "ctx_size": 4096,
   "temperature": 0.6,
   "num_outputs": 3,
-  "default_mode": "Make it concise",
+  "default_mode": "Rewrite",
   "idle_unload_seconds": 0,
   "extra_args": ["-fa", "on"]
 }
