@@ -378,6 +378,14 @@ void MainWindow::setupUi()
     m_intentBtn = new QPushButton(QStringLiteral("Manage…"), this);
     m_intentBtn->setToolTip(QStringLiteral("Create, edit, or delete saved context presets"));
     ctxRow->addWidget(m_intentBtn);
+    m_expandAbbrevChk = new QCheckBox(QStringLiteral("Expand abbreviations"), this);
+    m_expandAbbrevChk->setToolTip(QStringLiteral(
+        "Spell out abbreviations, initialisms and jargon in the output (e.g. SR → Screen Right)"));
+    m_expandAbbrevChk->setWhatsThis(QStringLiteral(
+        "When on, the model expands abbreviations and initialisms to their full form in "
+        "its output (e.g. “SR” → “Screen Right”). Applies to both Refine and Chat, and "
+        "pairs well with the Context dictionaries."));
+    ctxRow->addWidget(m_expandAbbrevChk);
     root->addLayout(ctxRow);
 
     // Two tabs: the side-by-side "Refine" proofreader, and a conversational
@@ -666,6 +674,8 @@ void MainWindow::wireSignals()
     connect(m_intentBtn, &QPushButton::clicked, this, &MainWindow::manageIntents);
     connect(m_intentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onIntentComboChanged);
+
+    connect(m_expandAbbrevChk, &QCheckBox::toggled, this, [this]() { persistState(); });
 
     // remember chat edit + tone toggles across sessions
     for (auto *cb : m_chatEdits)
@@ -960,6 +970,10 @@ void MainWindow::flushPending()
                                   "tone or audience: %1\nHonour this while refining.").arg(m_intent);
         if (v.note[0] != '\0')
             sys += QStringLiteral("\n\n%1").arg(QString::fromUtf8(v.note));
+        if (m_expandAbbrevChk && m_expandAbbrevChk->isChecked())
+            sys += QStringLiteral("\n\nExpand any abbreviations, initialisms, and jargon to "
+                                  "their full form (e.g. write “Screen Right” for “SR”), "
+                                  "keeping the meaning identical.");
         // Proofreading wants a fast, direct answer — disable chain-of-thought.
         // ("/no_think" is Qwen3's per-turn switch; harmless on models without it.
         // The Chat tab omits this, so it keeps full thinking.)
@@ -1241,6 +1255,12 @@ void MainWindow::loadPersistedState()
         m_chatEdits[i]->blockSignals(false);
     }
 
+    if (m_expandAbbrevChk) {
+        m_expandAbbrevChk->blockSignals(true);
+        m_expandAbbrevChk->setChecked(s.value("expandAbbrev", false).toBool());
+        m_expandAbbrevChk->blockSignals(false);
+    }
+
     // global context presets + the active context selection
     loadIntentState();
 
@@ -1262,6 +1282,7 @@ void MainWindow::persistState()
         if (m.check->isChecked()) checked << m.label;
     s.setValue("modes", checked);
     if (m_tabs) s.setValue("tab", m_tabs->currentIndex());   // active tab (Refine/Chat)
+    if (m_expandAbbrevChk) s.setValue("expandAbbrev", m_expandAbbrevChk->isChecked());
     QStringList tones;
     for (int i = 0; i < m_chatTones.size(); ++i)
         if (m_chatTones[i]->isChecked()) tones << QString::fromUtf8(kChatTones[i].label);
@@ -1313,6 +1334,11 @@ void MainWindow::resetPreferences()
     m_intent.clear();                         // clear active context (keep saved presets)
     refreshIntentCombo();
     saveIntentState();
+    if (m_expandAbbrevChk) {
+        m_expandAbbrevChk->blockSignals(true);
+        m_expandAbbrevChk->setChecked(false);
+        m_expandAbbrevChk->blockSignals(false);
+    }
     for (auto *cb : m_chatTones) {            // clear chat tone toggles
         cb->blockSignals(true);
         cb->setChecked(false);
@@ -1623,6 +1649,11 @@ void MainWindow::doSendChat()
                               "conversation. Rewrite it — %1 — while preserving the meaning. "
                               "Fix grammar and spelling. Output only the rewritten text, with "
                               "no commentary.").arg(edits.join(QStringLiteral("; ")));
+
+    if (m_expandAbbrevChk && m_expandAbbrevChk->isChecked())
+        sys += QStringLiteral("\n\nExpand any abbreviations, initialisms, and jargon to their "
+                              "full form in your reply (e.g. write “Screen Right” for “SR”), "
+                              "keeping the meaning identical.");
 
     QJsonArray msgs;
     msgs.append(QJsonObject{{"role", "system"}, {"content", sys}});

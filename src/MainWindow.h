@@ -122,6 +122,7 @@ private:
     QPushButton    *m_resetBtn     = nullptr;
     QPushButton    *m_intentBtn    = nullptr;   // open the context-preset manager
     QComboBox      *m_intentCombo  = nullptr;   // pick a saved context preset (global)
+    QCheckBox      *m_expandAbbrevChk = nullptr;// spell out abbreviations in the output
     QPushButton    *m_expandBtn    = nullptr;   // expand input to fill the window
     QComboBox      *m_themeCombo   = nullptr;
     QFontComboBox  *m_fontCombo    = nullptr;
