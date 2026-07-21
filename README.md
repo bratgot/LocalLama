@@ -17,9 +17,12 @@ type / paste text  ->  Qt app  ->  llama-server (127.0.0.1)  ->  GPU  ->  refine
 - **Two tabs: Refine + Chat.** *Refine* is the side-by-side proofreading view;
   *Chat* is a full offline conversation with the model (ChatGPT-style, multi-turn,
   streaming) for free-form rewriting, drafting, or asking how to phrase something.
-- **Multi-mode, side by side.** In Refine, tick any of four modes — Fix grammar &
-  spelling / Improve clarity / Make it formal / Make it concise — and each ticked
-  mode produces its own suggestion column, each with a Copy button.
+- **Multi-mode, side by side.** In Refine, tick any of five modes — **Rewrite** /
+  Fix grammar & spelling / Improve clarity / Make it formal / Make it concise — and
+  each ticked mode produces its own suggestion column, each with a Copy button.
+- **Context dictionaries.** Drop-in `.txt` glossaries (ships with VFX, Cinematography,
+  and Computer-graphics term dictionaries) teach the model your jargon, initialisms,
+  and abbreviations — applied to both tabs.
 - **Regenerate & navigate.** "New answers" reruns with fresh seeds; ◀ / ▶ step
   back through earlier results; ↶ / ↷ undo/redo your input edits.
 - **History panel.** Every run is saved; click any past conversation to reload it.
@@ -37,24 +40,40 @@ type / paste text  ->  Qt app  ->  llama-server (127.0.0.1)  ->  GPU  ->  refine
 
 ## What's new in v0.2
 
-- **New Chat tab** — a full offline, multi-turn, streaming conversation with the
-  model (alongside the existing Refine proofreader). Input-on-top layout, **Clear
-  chat** / **Copy reply** buttons, and a **Show thinking** toggle for the model's
-  reasoning.
-- **Chat tone toggles** — one-click **Warm / Friendly / Professional / Assertive /
-  Urgent / No worries** (multi-select) that shape each reply.
-- **Global Context presets** — reusable, named instructions (tone, audience, house
-  style) applied to **both** Refine and Chat. Saved per-user and **seedable for a
-  whole team** via a shared `settings.ini`. (Replaces the old Refine-only "Intent"
-  button.)
-- **New default model: Qwen3-8B** (Apache-2.0) — stronger at following
-  instructions than the old Qwen2.5-7B, same ~5 GB footprint. Refine runs it in
-  fast no-think mode; Chat keeps full reasoning, shown separately.
-- **Theme is now global** — moved to the header, reachable from both tabs, and the
-  dark/wild themes now style the tabs (previously they stayed white).
-- **Remembers more** — the active tab and chat tone selections persist between
-  sessions; chat history is saved per-user (`chat.json`), like Refine history.
-- **App icon & taskbar polish**, and the version now shows in the app name.
+**New Chat tab** — a full offline, multi-turn, streaming conversation with the
+model, alongside the existing Refine proofreader.
+- Input-on-top layout; **Submit** / **Stop**; **Clear chat** / **Copy reply**; a
+  **Show thinking** toggle for the model's reasoning.
+- **Conversation-history panel** (like Refine's): every chat auto-saves; click a
+  past conversation to reload and continue it.
+- Categorised toggles — **Edit:** Rewrite (default on) / Improve clarity / Make it
+  concise / Make it formal / Expand abbreviations, and **Tone:** Warm / Friendly /
+  Professional / Assertive / Urgent / No worries (all multi-select).
+
+**Refine** — added a **Rewrite** mode (default on) alongside the existing four.
+
+**Context + dictionaries**
+- **Global Context** — a standing instruction / tone / audience applied to **both**
+  tabs. Save reusable **presets** (per-user, and **team-seedable** via a shared
+  `settings.ini`). Replaces the old Refine-only "Intent" button.
+- **File-based dictionaries** — drop a `.txt` into the `contexts/` folder (next to
+  the exe, or your per-user folder) and it becomes a Context. Ships with **VFX terms
+  & jargon**, **VFX production**, **Cinematography**, and **Computer graphics**
+  glossaries so the model understands your abbreviations and initialisms.
+
+**New default model: Qwen3-8B** (Apache-2.0) — stronger at instruction-following
+than the old Qwen2.5-7B, same ~5 GB footprint. Refine runs it in fast no-think
+mode; Chat keeps full reasoning, shown separately.
+
+**Interface**
+- **Theme is global** (in the header, reachable from both tabs) and the dark/wild
+  themes now style the tabs.
+- **Help / Tech info tab** — a built-in guide with examples, plus the Model info
+  panel (moved here from Refine).
+- **Live GPU VRAM** (used / total) in the status bar; version shown in the app
+  name; app icon & taskbar polish.
+- **Remembers more** — active tab, chat Edit/Tone toggles, and Context selection
+  persist per-user; chat history saved to `chat.json`, like Refine history.
 
 > **⚠️ Higher VRAM than v0.1.** v0.2 uses more GPU memory: the Chat tab adds a
 > **5th parallel server slot** (KV cache scales as `ctx_size × slots`, up from 4→5
@@ -170,7 +189,7 @@ single config works on both OSes — the app normalises `server_binary`
 | `ctx_size` | `4096` | context tokens per output slot |
 | `temperature` | `0.6` | sampling temperature |
 | `num_outputs` | `3` | concurrency for the server's parallel slots |
-| `default_mode` | `Make it concise` | first-run default mode |
+| `default_mode` | `Rewrite` | first-run default mode |
 | `idle_unload_seconds` | `0` | `0` = stay resident (fast); `>0` = unload after N s idle |
 | `extra_args` | `["-fa","on"]` | extra args passed to llama-server |
 
