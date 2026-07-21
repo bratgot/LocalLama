@@ -145,7 +145,7 @@ private:
     QPushButton    *m_chatNewBtn   = nullptr;   // Clear chat
     QPushButton    *m_chatCopyBtn  = nullptr;   // Copy latest reply
     QCheckBox      *m_chatThinkChk = nullptr;   // show/hide the model's thinking
-    QCheckBox      *m_chatRewriteChk = nullptr; // rewrite my message instead of answering it
+    QVector<QCheckBox*> m_chatEdits;            // edit toggles (Rewrite/Clarity/Concise/Formal)
     QVector<QCheckBox*> m_chatTones;            // tone toggles (Warm/Friendly/…)
     QListWidget    *m_chatHistoryList  = nullptr;  // past conversations
     QPushButton    *m_chatClearHistBtn = nullptr;

@@ -96,6 +96,17 @@ const Variety kVariety[] = {
 };
 const int kVarietyCount = int(sizeof(kVariety) / sizeof(kVariety[0]));
 
+// Edit toggles for the Chat tab. When any are checked, the model rewrites the
+// user's message with the chosen goals instead of answering it (multi-select).
+struct ChatEdit { const char *label; const char *phrase; };
+const ChatEdit kChatEdits[] = {
+    {"Rewrite",         "improving flow, word choice and structure"},
+    {"Improve clarity", "making it clearer and easier to read"},
+    {"Make it concise", "making it more concise — cutting redundancy and wordiness"},
+    {"Make it formal",  "using a professional, formal tone"},
+};
+const int kChatEditCount = int(sizeof(kChatEdits) / sizeof(kChatEdits[0]));
+
 // Quick tone toggles for the Chat tab. Any checked ones are folded into the
 // chat system prompt as a tone instruction (multi-select — you can combine them).
 struct ChatTone { const char *label; const char *phrase; };
@@ -654,10 +665,11 @@ void MainWindow::wireSignals()
     connect(m_intentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onIntentComboChanged);
 
-    // remember chat tone toggles + rewrite mode across sessions
+    // remember chat edit + tone toggles across sessions
+    for (auto *cb : m_chatEdits)
+        connect(cb, &QCheckBox::toggled, this, [this]() { persistState(); });
     for (auto *cb : m_chatTones)
         connect(cb, &QCheckBox::toggled, this, [this]() { persistState(); });
-    connect(m_chatRewriteChk, &QCheckBox::toggled, this, [this]() { persistState(); });
     connect(m_expandBtn, &QPushButton::clicked, this, &MainWindow::toggleExpand);
 }
 
@@ -1165,10 +1177,18 @@ void MainWindow::loadPersistedState()
         m_chatTones[i]->setChecked(savedTones.contains(QString::fromUtf8(kChatTones[i].label)));
         m_chatTones[i]->blockSignals(false);
     }
-    if (m_chatRewriteChk) {
-        m_chatRewriteChk->blockSignals(true);
-        m_chatRewriteChk->setChecked(s.value("chatRewrite", false).toBool());
-        m_chatRewriteChk->blockSignals(false);
+    // chat edit toggles — Rewrite on by default; one-time migration adds it for
+    // existing users too (then respects whatever they later choose).
+    QStringList savedEdits = s.value("chatEdits").toStringList();
+    if (!s.value("chatEditsDefaulted", false).toBool()) {
+        if (!savedEdits.contains(QLatin1String("Rewrite")))
+            savedEdits << QStringLiteral("Rewrite");
+        s.setValue("chatEditsDefaulted", true);
+    }
+    for (int i = 0; i < m_chatEdits.size(); ++i) {
+        m_chatEdits[i]->blockSignals(true);
+        m_chatEdits[i]->setChecked(savedEdits.contains(QString::fromUtf8(kChatEdits[i].label)));
+        m_chatEdits[i]->blockSignals(false);
     }
 
     // global context presets + the active context selection
@@ -1196,7 +1216,10 @@ void MainWindow::persistState()
     for (int i = 0; i < m_chatTones.size(); ++i)
         if (m_chatTones[i]->isChecked()) tones << QString::fromUtf8(kChatTones[i].label);
     s.setValue("chatTones", tones);
-    if (m_chatRewriteChk) s.setValue("chatRewrite", m_chatRewriteChk->isChecked());
+    QStringList edits;
+    for (int i = 0; i < m_chatEdits.size(); ++i)
+        if (m_chatEdits[i]->isChecked()) edits << QString::fromUtf8(kChatEdits[i].label);
+    s.setValue("chatEdits", edits);
     s.setValue("geometry", saveGeometry());        // window size + position
 }
 
@@ -1245,10 +1268,10 @@ void MainWindow::resetPreferences()
         cb->setChecked(false);
         cb->blockSignals(false);
     }
-    if (m_chatRewriteChk) {
-        m_chatRewriteChk->blockSignals(true);
-        m_chatRewriteChk->setChecked(false);
-        m_chatRewriteChk->blockSignals(false);
+    for (int i = 0; i < m_chatEdits.size(); ++i) {   // default: Rewrite on, others off
+        m_chatEdits[i]->blockSignals(true);
+        m_chatEdits[i]->setChecked(QString::fromUtf8(kChatEdits[i].label) == QLatin1String("Rewrite"));
+        m_chatEdits[i]->blockSignals(false);
     }
 
     // window back to a centered default
@@ -1360,18 +1383,30 @@ void MainWindow::buildChatTab()
     m_chatCopyBtn->setToolTip(QStringLiteral("Copy the latest assistant reply to the clipboard"));
     top->addWidget(m_chatCopyBtn);
     top->addStretch(1);
-    m_chatRewriteChk = new QCheckBox(QStringLiteral("Rewrite"), this);
-    m_chatRewriteChk->setToolTip(
-        QStringLiteral("Rewrite my message (improve wording) instead of answering it"));
-    m_chatRewriteChk->setWhatsThis(QStringLiteral(
-        "When on, the model rewrites your submitted message (clearer wording, better "
-        "flow) and returns only the rewrite — instead of answering it as a question."));
-    top->addWidget(m_chatRewriteChk);
     m_chatThinkChk = new QCheckBox(QStringLiteral("Show thinking"), this);
     m_chatThinkChk->setChecked(true);
     m_chatThinkChk->setToolTip(QStringLiteral("Show the model's reasoning above each answer"));
     top->addWidget(m_chatThinkChk);
     lay->addLayout(top);
+
+    // edit toggles — when any are ticked, the model rewrites your message with the
+    // chosen goals instead of answering it (multi-select)
+    auto *editRow = new QHBoxLayout();
+    editRow->addWidget(new QLabel(QStringLiteral("Edit:"), this));
+    m_chatEdits.clear();
+    for (int i = 0; i < kChatEditCount; ++i) {
+        auto *cb = new QCheckBox(QString::fromUtf8(kChatEdits[i].label), this);
+        cb->setToolTip(QStringLiteral("Rewrite my message by %1")
+                           .arg(QString::fromUtf8(kChatEdits[i].phrase)));
+        cb->setWhatsThis(QStringLiteral(
+            "Edit toggles — when any are ticked, the model rewrites your submitted "
+            "message with the chosen goals (clarity, concise, formal…) and returns only "
+            "the rewrite, instead of answering it. Combine as you like."));
+        m_chatEdits.append(cb);
+        editRow->addWidget(cb);
+    }
+    editRow->addStretch(1);
+    lay->addLayout(editRow);
 
     // tone toggles — checked ones shape the reply's tone (multi-select)
     auto *toneRow = new QHBoxLayout();
@@ -1529,12 +1564,15 @@ void MainWindow::doSendChat()
         sys += QStringLiteral("\n\nAdopt this tone in your reply: %1.")
                    .arg(tones.join(QStringLiteral(", ")));
 
-    if (m_chatRewriteChk && m_chatRewriteChk->isChecked())
+    QStringList edits;                     // edit toggles (Rewrite / Clarity / Concise / Formal)
+    for (int i = 0; i < m_chatEdits.size(); ++i)
+        if (m_chatEdits[i]->isChecked())
+            edits << QString::fromUtf8(kChatEdits[i].phrase);
+    if (!edits.isEmpty())
         sys += QStringLiteral("\n\nThe user wants their latest message rewritten, not a "
-                              "conversation. Rewrite it so it reads clearly and naturally — "
-                              "improve flow, word choice, and structure while preserving the "
-                              "meaning. Fix grammar and spelling. Output only the rewritten "
-                              "text, with no commentary.");
+                              "conversation. Rewrite it — %1 — while preserving the meaning. "
+                              "Fix grammar and spelling. Output only the rewritten text, with "
+                              "no commentary.").arg(edits.join(QStringLiteral("; ")));
 
     QJsonArray msgs;
     msgs.append(QJsonObject{{"role", "system"}, {"content", sys}});
