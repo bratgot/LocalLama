@@ -48,7 +48,6 @@
 #include <QTextBrowser>
 #include <QTimer>
 #include <QProcess>
-#include <QWhatsThis>
 #include <QSet>
 #include <QDesktopServices>
 #include <QTextEdit>
@@ -319,12 +318,6 @@ void MainWindow::setupUi()
     QFont tf = title->font(); tf.setPointSize(20); tf.setBold(true); title->setFont(tf);
     titleRow->addWidget(title);
     titleRow->addStretch(1);
-    auto *helpBtn = new QPushButton(QStringLiteral("?"), this);
-    helpBtn->setFixedWidth(30);
-    helpBtn->setToolTip(QStringLiteral("Click, then point at anything for help "
-                                       "(or hover controls for tips)"));
-    connect(helpBtn, &QPushButton::clicked, this, &MainWindow::showHelpPopup);
-    titleRow->addWidget(helpBtn);
     // Theme is a global, app-wide preference — keep it in the shared header so
     // it's reachable from both the Refine and Chat tabs.
     titleRow->addWidget(new QLabel(QStringLiteral("Theme:"), this));
@@ -378,14 +371,6 @@ void MainWindow::setupUi()
     m_intentBtn = new QPushButton(QStringLiteral("Manage…"), this);
     m_intentBtn->setToolTip(QStringLiteral("Create, edit, or delete saved context presets"));
     ctxRow->addWidget(m_intentBtn);
-    m_expandAbbrevChk = new QCheckBox(QStringLiteral("Expand abbreviations"), this);
-    m_expandAbbrevChk->setToolTip(QStringLiteral(
-        "Spell out abbreviations, initialisms and jargon in the output (e.g. SR → Screen Right)"));
-    m_expandAbbrevChk->setWhatsThis(QStringLiteral(
-        "When on, the model expands abbreviations and initialisms to their full form in "
-        "its output (e.g. “SR” → “Screen Right”). Applies to both Refine and Chat, and "
-        "pairs well with the Context dictionaries."));
-    ctxRow->addWidget(m_expandAbbrevChk);
     root->addLayout(ctxRow);
 
     // Two tabs: the side-by-side "Refine" proofreader, and a conversational
@@ -970,10 +955,6 @@ void MainWindow::flushPending()
                                   "tone or audience: %1\nHonour this while refining.").arg(m_intent);
         if (v.note[0] != '\0')
             sys += QStringLiteral("\n\n%1").arg(QString::fromUtf8(v.note));
-        if (m_expandAbbrevChk && m_expandAbbrevChk->isChecked())
-            sys += QStringLiteral("\n\nExpand any abbreviations, initialisms, and jargon to "
-                                  "their full form (e.g. write “Screen Right” for “SR”), "
-                                  "keeping the meaning identical.");
         // Proofreading wants a fast, direct answer — disable chain-of-thought.
         // ("/no_think" is Qwen3's per-turn switch; harmless on models without it.
         // The Chat tab omits this, so it keeps full thinking.)
@@ -1481,6 +1462,11 @@ void MainWindow::buildChatTab()
         m_chatEdits.append(cb);
         editRow->addWidget(cb);
     }
+    // separate output-style toggle (not a rewrite goal): spell out abbreviations
+    m_expandAbbrevChk = new QCheckBox(QStringLiteral("Expand abbreviations"), this);
+    m_expandAbbrevChk->setToolTip(QStringLiteral(
+        "Spell out abbreviations, initialisms and jargon in the reply (e.g. SR → Screen Right)"));
+    editRow->addWidget(m_expandAbbrevChk);
     editRow->addStretch(1);
     lay->addLayout(editRow);
 
@@ -1934,14 +1920,6 @@ QWidget *MainWindow::buildHelpTab()
     lay->addWidget(techBox);
 
     return tab;
-}
-
-void MainWindow::showHelpPopup()
-{
-    // Enter Qt's "What's This?" mode: the cursor becomes a "?", and clicking any
-    // control pops a help bubble right there under the cursor. Hovering controls
-    // also shows their tooltips. Full guide lives on the Help / Tech info tab.
-    QWhatsThis::enterWhatsThisMode();
 }
 
 // ========================= GPU VRAM monitor ==============================

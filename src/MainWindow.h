@@ -66,7 +66,6 @@ private:
     void persistState();                 // save dark mode + font + checked modes
     void updateModelInfo();              // refresh the model info panel text
     QWidget *buildHelpTab();             // the Help / Tech info tab (help + model info)
-    void showHelpPopup();                // quick-help popup dialog
     void startVramMonitor();             // begin polling GPU VRAM usage
     void pollVram();                     // query nvidia-smi and update the VRAM label
     void fetchServerProps();             // GET /props to confirm the loaded model
