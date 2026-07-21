@@ -49,6 +49,8 @@
 #include <QTimer>
 #include <QProcess>
 #include <QWhatsThis>
+#include <QSet>
+#include <QDesktopServices>
 #include <QTextEdit>
 #include <QTextCharFormat>
 #include <QColor>
@@ -727,10 +729,12 @@ void MainWindow::refreshIntentCombo()
     m_intentCombo->clear();
     m_intentCombo->addItem(QStringLiteral("(no context)"), QString());   // itemData = text
     int sel = 0;
-    for (int i = 0; i < m_intentPresets.size(); ++i) {
-        m_intentCombo->addItem(m_intentPresets[i].name, m_intentPresets[i].text);
-        if (!m_intent.isEmpty() && m_intentPresets[i].text == m_intent) sel = i + 1;
-    }
+    auto addPreset = [&](const IntentPreset &p) {
+        m_intentCombo->addItem(p.name, p.text);
+        if (!m_intent.isEmpty() && p.text == m_intent) sel = m_intentCombo->count() - 1;
+    };
+    for (const auto &p : m_filePresets)   addPreset(p);   // shipped / custom dictionaries
+    for (const auto &p : m_intentPresets) addPreset(p);   // user presets (Manage…)
     // an active context that matches no preset is shown as a transient "(custom)"
     if (!m_intent.isEmpty() && sel == 0) {
         m_intentCombo->addItem(QStringLiteral("(custom)"), m_intent);
@@ -738,6 +742,41 @@ void MainWindow::refreshIntentCombo()
     }
     m_intentCombo->setCurrentIndex(sel);
     m_intentCombo->blockSignals(false);
+}
+
+QString MainWindow::userContextDir() const
+{
+    return configDir() + "/contexts";
+}
+
+void MainWindow::loadContextFiles()
+{
+    // Each *.txt file is one Context preset: filename = name, contents = the text.
+    // Loaded from a shipped folder next to the exe and a per-user folder (writable
+    // even when the app sits on a read-only share) so anyone can drop in custom ones.
+    m_filePresets.clear();
+    QDir().mkpath(userContextDir());                     // ensure the drop-folder exists
+    const QStringList dirs = {
+        QCoreApplication::applicationDirPath() + "/contexts",
+        userContextDir()
+    };
+    QSet<QString> seen;
+    for (const QString &d : dirs) {
+        QDir dir(d);
+        if (!dir.exists()) continue;
+        const auto files = dir.entryInfoList({QStringLiteral("*.txt")}, QDir::Files, QDir::Name);
+        for (const QFileInfo &fi : files) {
+            const QString name = fi.completeBaseName();
+            const QString key  = name.toLower();
+            if (seen.contains(key)) continue;            // user folder overrides shipped by name
+            QFile f(fi.absoluteFilePath());
+            if (!f.open(QIODevice::ReadOnly)) continue;
+            const QString text = QString::fromUtf8(f.readAll()).trimmed();
+            if (text.isEmpty()) continue;
+            m_filePresets.append({name, text});
+            seen.insert(key);
+        }
+    }
 }
 
 void MainWindow::onIntentComboChanged(int idx)
@@ -758,9 +797,13 @@ void MainWindow::manageIntents()
     auto *lay = new QVBoxLayout(&dlg);
 
     auto *hint = new QLabel(QStringLiteral(
-        "Save reusable context (tone, audience, house style, standing instructions) "
-        "and apply it to every refinement and chat reply. Pick a saved preset from "
-        "the Context box after saving, or “Use as context” to apply the text below now."), &dlg);
+        "Save reusable context (tone, audience, house style, standing instructions, "
+        "glossaries) and apply it to every refinement and chat reply. Pick a saved "
+        "preset from the Context box, or “Use as context” to apply the text below now.<br>"
+        "<i>Tip: drop a plain <b>.txt</b> file into the contexts folder (filename = its "
+        "name) and it appears as a Context — e.g. the shipped VFX dictionaries. The list "
+        "below edits your personal presets.</i>"), &dlg);
+    hint->setTextFormat(Qt::RichText);
     hint->setWordWrap(true);
     lay->addWidget(hint);
 
@@ -780,14 +823,19 @@ void MainWindow::manageIntents()
     lay->addLayout(mid, 1);
 
     auto *btns = new QHBoxLayout();
-    auto *newBtn   = new QPushButton(QStringLiteral("New"), &dlg);
-    auto *saveBtn  = new QPushButton(QStringLiteral("Save preset"), &dlg);
-    auto *delBtn   = new QPushButton(QStringLiteral("Delete"), &dlg);
-    auto *useBtn   = new QPushButton(QStringLiteral("Use as context"), &dlg);
-    auto *closeBtn = new QPushButton(QStringLiteral("Close"), &dlg);
+    auto *newBtn    = new QPushButton(QStringLiteral("New"), &dlg);
+    auto *saveBtn   = new QPushButton(QStringLiteral("Save preset"), &dlg);
+    auto *delBtn    = new QPushButton(QStringLiteral("Delete"), &dlg);
+    auto *folderBtn = new QPushButton(QStringLiteral("Open contexts folder"), &dlg);
+    auto *useBtn    = new QPushButton(QStringLiteral("Use as context"), &dlg);
+    auto *closeBtn  = new QPushButton(QStringLiteral("Close"), &dlg);
     btns->addWidget(newBtn); btns->addWidget(saveBtn); btns->addWidget(delBtn);
+    btns->addWidget(folderBtn);
     btns->addStretch(1); btns->addWidget(useBtn); btns->addWidget(closeBtn);
     lay->addLayout(btns);
+    connect(folderBtn, &QPushButton::clicked, &dlg, [this]() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(userContextDir()));
+    });
 
     QVector<IntentPreset> work = m_intentPresets;   // edit a copy, commit on close
     auto reloadList = [&](int selRow) {
@@ -848,6 +896,8 @@ void MainWindow::manageIntents()
 
 void MainWindow::loadIntentState()
 {
+    loadContextFiles();                 // shipped + custom dictionaries from contexts/*.txt
+
     QSettings s(settingsPath(), QSettings::IniFormat);
     m_intentPresets.clear();
     const int n = s.beginReadArray(QStringLiteral("intentPresets"));

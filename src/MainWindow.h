@@ -50,6 +50,8 @@ private:
     // --- new behaviour --------------------------------------------------------
     void startGeneration();              // run current input through the checked modes
     void manageIntents();                // create/edit/delete reusable context presets
+    void loadContextFiles();             // load .txt dictionaries from the contexts/ folders
+    QString userContextDir() const;      // per-user contexts/ folder (writable)
     void refreshIntentCombo();           // rebuild the Context combo from presets
     void onIntentComboChanged(int idx);  // apply the picked preset (or none)
     void loadIntentState();              // read presets + current context
@@ -175,7 +177,8 @@ private:
     int     m_genCounter  = 0;      // bumps each run so seeds (and answers) differ
     QString m_intent;               // active global context, applied to Refine + Chat
     struct IntentPreset { QString name; QString text; };
-    QVector<IntentPreset> m_intentPresets;   // reusable, saved (and team-seedable) presets
+    QVector<IntentPreset> m_intentPresets;   // user presets (settings.ini, editable in Manage…)
+    QVector<IntentPreset> m_filePresets;     // read-only dictionaries from contexts/*.txt
     bool    m_expanded    = false;  // input-fills-window mode
 
     QJsonArray m_history;           // persisted conversation history (newest first)

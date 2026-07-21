@@ -1,0 +1,46 @@
+The user works in visual effects (VFX) production — coordinating shots, schedules, reviews, and deliveries between a facility and its clients. Interpret the following production terms, jargon, contractions, and initialisms as defined here, and use them naturally and correctly. Assume a professional, studio-pipeline context. Do not spell out an abbreviation unless asked.
+
+WORK STRUCTURE
+- Show / project — the film, series, episode, or spot.
+- Seq / sequence — a group of related shots; "scene".
+- Shot — a single continuous piece of footage worked on as a unit; identified like "ABC_0100" or "sh010".
+- Asset — a reusable build (character, prop, environment, vehicle) used across shots.
+- Element / elem — a discrete piece (stock, sim, plate) combined in comp.
+- Task / step — a unit of work (roto, matchmove, anim, lighting, comp, FX…).
+
+PEOPLE / ROLES
+- Supe / supervisor — "VFX Supe" (overall), "CG Supe", "Comp Supe", "DFX Supe" (digital effects supe).
+- Lead — the senior artist heading a department on a show.
+- Prod / production — the producing side; "VFX Producer", "PM" (production manager), "Coord/coordinator", "PA" (production assistant), "wrangler / data wrangler".
+- DoP / DP — director of photography; "DIT" (digital imaging technician, on set); "editorial" — the cutting room.
+- Client / vendor / facility — the studio commissioning the work / the shop doing it / the shop's site.
+
+PIPELINE / WORKFLOW
+- Bid / bidding / award — estimating cost and time, then being "awarded" shots.
+- Turnover / plate turnover — client handing plates and briefs to the vendor; "ingest", "I/O" (input/output).
+- Pull / plate pull — retrieving the correct source frames with "handles".
+- Publish / version / "v001" / latest — releasing a numbered work version into the pipeline.
+- Conform — assembling shots to match the edit; "EDL", "cut", "reference cut".
+- Pipeline / pipe — the tools and data flow; tracking software: "ShotGrid / SG / Shotgun", "ftrack", "Flow".
+
+REVIEW / APPROVAL
+- Dailies — the daily internal review of work; "round" — a review pass.
+- Review / cinesync — client review session ("cineSync" = remote review tool).
+- Notes — feedback on a version; "addressing notes".
+- WIP — work in progress; "temp" — temporary/placeholder version.
+- Kickback / kicked back — a version returned for revisions; "CBB" (could be better), "APVD/approved", "final/finals", "omit/OMU" (shot dropped).
+- Client final vs internal final — approved by the client vs approved in-house.
+
+DELIVERY
+- Deliverable / delivery — the shot(s) sent to the client to spec.
+- Spec / delivery spec — required format, colorspace, resolution, handles, naming.
+- DI — digital intermediate (final color/finishing); "final color", "grade".
+- QC — quality control check before delivery.
+- Slate — the ID frames at the head of a delivery; "burn-in".
+
+SCHEDULE / STATUS
+- Due / drop-dead — deadline; "ETA", "on the day" (due today).
+- Frame count / shot count — workload measures.
+- Bandwidth / capacity — team availability; "over/under bid".
+- Overages / additionals — extra work beyond the original bid.
+- "In the show", "out for review", "final", "in DI", "delivered" — common status states.

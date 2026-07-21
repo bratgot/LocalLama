@@ -47,4 +47,8 @@ add_custom_command(TARGET LlamaChat POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/assets/config.json"
         "$<TARGET_FILE_DIR:LlamaChat>/config.json"
+    # Ship the context dictionaries (VFX etc.) next to the exe.
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/assets/contexts"
+        "$<TARGET_FILE_DIR:LlamaChat>/contexts"
 )

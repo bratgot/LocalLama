@@ -58,6 +58,13 @@ New-Item -ItemType Directory -Force -Path "$distDir\models"   | Out-Null
 Copy-Item $exe $distDir
 Copy-Item (Join-Path $repoRoot 'assets\config.json') $distDir
 
+# Context dictionaries (VFX etc.) — shipped so they show up as Context presets.
+$ctxSrc = Join-Path $repoRoot 'assets\contexts'
+if (Test-Path $ctxSrc) {
+    New-Item -ItemType Directory -Force -Path "$distDir\contexts" | Out-Null
+    Copy-Item (Join-Path $ctxSrc '*') "$distDir\contexts" -Recurse -Force
+}
+
 # Qt runtime
 $qtBin = Find-QtBin
 $windeploy = if ($qtBin) { Join-Path $qtBin 'windeployqt.exe' } else { $null }
